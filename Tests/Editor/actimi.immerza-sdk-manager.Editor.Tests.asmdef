@@ -1,0 +1,8 @@
+{
+    "name": "ImmerzaSDK.Manager.Editor.Test",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "versionDefines": []
+}
