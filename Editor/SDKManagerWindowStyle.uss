@@ -1,0 +1,6 @@
+.unity-tab-view {
+    width: auto;
+}
+
+.unity-tab-view__reorderable {
+}

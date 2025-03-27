@@ -15,14 +15,37 @@ using System.Threading.Tasks;
 
 namespace ImmerzaSDK.Manager.Editor
 {
+    struct Release
+    {
+        public Release(string version, string url)
+        {
+            Version = version;
+            Url = url;
+        }
+
+        public string Version { get; }
+        public string Url { get; }
+    }
+
     public class SDKManagerWindow : EditorWindow
     {
         private const string ReleaseEndpoint = "https://api.github.com/repos/getimmerza/immerza-sdk-package/releases";
 
         [SerializeField] 
         private VisualTreeAsset _treeAsset = null;
+        [SerializeField]
+        private Sprite _logo = null;
 
-#region UI Elements
+#region Auth UI Elements
+        private VisualElement _authRoot = null;
+        private TextField _emailField = null;
+        private TextField _passwordField = null;
+        private Label _authMessage = null;
+        private Button _signInButton = null;
+#endregion
+
+#region Update UI Elements
+        private VisualElement _updateRoot = null;
         private Label _crtVersionField = null;
         private DropdownField _versionField = null;
         private Button _refreshBtn = null;
@@ -33,44 +56,101 @@ namespace ImmerzaSDK.Manager.Editor
         private List<Release> _releases = new();
         private string _crtVersion = string.Empty;
 
+        private AuthData _authData;
+
+        #region AuthPage
+
+        #endregion
+
         [MenuItem("Immerza/SDK Manager")]
         public static void ShowWindow()
         {
             SDKManagerWindow window = GetWindow<SDKManagerWindow>("Immerza SDK Manager");
         }
 
-        public void CreateGUI()
+        public async void CreateGUI()
         {
             VisualElement root = rootVisualElement;
-
-            root.Add(new Label());
-
             _treeAsset.CloneTree(root);
+            _authRoot = root.Q<VisualElement>("AuthPage");
+            _updateRoot = root.Q<VisualElement>("UpdatePage");
 
-            _crtVersionField = root.Q<Label>("CurrentVersion");
-            _versionField = root.Q<DropdownField>("VersionField");
-            _refreshBtn = root.Q<Button>("RefreshButton");
-            _updateBtn = root.Q<Button>("UpdateButton");
-            _successLabel = root.Q<Label>("SuccessLabel");
+            if (string.IsNullOrEmpty(EditorPrefs.GetString("immerza_refresh_token")))
+            {
+                Image immerzaLogo = new()
+                {
+                    scaleMode = ScaleMode.ScaleToFit,
+                    sprite = _logo
+                };
+                immerzaLogo.style.marginTop = 20.0f;
+                immerzaLogo.style.marginLeft = 10.0f;
+                immerzaLogo.style.marginRight = 10.0f;
+                immerzaLogo.style.marginBottom = 20.0f;
+                
+                _authRoot.Insert(0, immerzaLogo);
+            }
+
+            _emailField = _authRoot.Q<TextField>("EmailField");
+            _passwordField = _authRoot.Q<TextField>("PasswordField");
+            _authMessage = _authRoot.Q<Label>("AuthMessage");
+            _signInButton = _authRoot.Q<Button>("SignInButton");
+            _signInButton.clicked += HandleSignIn;
+
+            _crtVersionField = _updateRoot.Q<Label>("CurrentVersion");
+            _versionField = _updateRoot.Q<DropdownField>("VersionField");
+            _refreshBtn = _updateRoot.Q<Button>("RefreshButton");
+            _updateBtn = _updateRoot.Q<Button>("UpdateButton");
+            _successLabel = _updateRoot.Q<Label>("SuccessLabel");
             _successLabel.visible = false;
 
-// disable 'call not awaited' warning here
-#pragma warning disable CS4014
-            _refreshBtn.clicked += () => { Refresh(); };
-#pragma warning restore CS4014
+            _refreshBtn.clicked += async() => await Refresh();
 
-            _crtVersion = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt").text;
+            //_crtVersion = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt").text;
             _crtVersionField.text = _crtVersion;
 
             _versionField.RegisterCallback<PointerDownEvent>(evt => ChooseRelease());
 
-// disable 'call not awaited' warning here
-#pragma warning disable CS4014
-            Refresh();
-#pragma warning restore CS4014
+            _authData = await Auth.Setup();
+            if (_authData != null)
+            {
+                _authRoot.enabledSelf = false;
+                _authRoot.visible = false;
+                _updateRoot.enabledSelf = true;
+                _updateRoot.visible = true;
+                await Refresh();
+            }
         }
 
-        private async Task Refresh()
+        private async void HandleSignIn()
+        {
+            if (string.IsNullOrEmpty(_emailField.text) || string.IsNullOrEmpty(_passwordField.text))
+            {
+                SetLabelMsg(_authMessage, false, "Please provide both the email address and password to your Immerza account.");
+                return;
+            }
+
+            _signInButton.SetEnabled(false);
+            _authMessage.visible = false;
+
+            string signInMsg;
+            (_authData, signInMsg) = await Auth.SignIn(_emailField.text, _passwordField.text);
+
+            if (_authData == null)
+            {
+                SetLabelMsg(_authMessage, false, signInMsg);
+                _signInButton.SetEnabled(true);
+                return;
+            }
+
+            _signInButton.SetEnabled(true);
+            _authRoot.SetEnabled(false);
+            _authRoot.visible = false;
+            _updateRoot.SetEnabled(true);
+            _updateRoot.visible = true;
+            
+        }
+
+        private async Awaitable Refresh()
         {
             SetButton(_updateBtn, false);
             _versionField.choices.Clear();
@@ -100,13 +180,13 @@ namespace ImmerzaSDK.Manager.Editor
 
             if (releasesReq.result != UnityWebRequest.Result.Success)
             {
-                SetSuccessMsg(false, "Network Error, couldn't get releases.");
+                SetLabelMsg(_successLabel, false, "Network Error, couldn't get releases.");
                 return false;
             }
 
             JArray releaseArray = JArray.Parse(releasesReq.downloadHandler.text);
 
-            foreach (JObject release in releaseArray)
+            foreach (JObject release in releaseArray.Cast<JObject>())
             {
                 Release newRelease = new(
                     (string)release["tag_name"],
@@ -144,19 +224,19 @@ namespace ImmerzaSDK.Manager.Editor
             }
         }
 
-        private void SetSuccessMsg(bool success, string message)
+        private void SetLabelMsg(Label label, bool success, string message)
         {
-            _successLabel.visible = true;
+            label.visible = true;
             if (success)
             {
-                _successLabel.style.color = new Color(0.36f, 1.0f, 0.36f);
+                label.style.color = new Color(0.36f, 1.0f, 0.36f);
             }
             else
             {
-                _successLabel.style.color = new Color(1.0f, 0.36f, 0.36f);
+                label.style.color = new Color(1.0f, 0.36f, 0.36f);
             }
 
-            _successLabel.text = message;
+            label.text = message;
         }
 
         private int CompareVersions(string version1, string version2)
@@ -190,17 +270,5 @@ namespace ImmerzaSDK.Manager.Editor
 
             return string.Compare(preRelease1, preRelease2, StringComparison.Ordinal);
         }
-    }
-
-    struct Release
-    {
-        public Release(string version, string url)
-        {
-            Version = version;
-            Url = url;
-        }
-
-        public string Version { get; }
-        public string Url { get; }
     }
 }
