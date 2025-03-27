@@ -24,7 +24,7 @@ namespace ImmerzaSDK.Manager.Editor
             formData.AddField("password", password);
             formData.AddField("clientId", Constants.CLIENT_ID);
 
-            using UnityWebRequest req = UnityWebRequest.Post(Constants.API_BASE_URL + "v2/auth/login", formData);
+            using UnityWebRequest req = UnityWebRequest.Post(Constants.API_ROUTE_LOGIN, formData);
             await req.SendWebRequest();
 
             JObject resObj = JObject.Parse(req.downloadHandler.text);
@@ -55,7 +55,7 @@ namespace ImmerzaSDK.Manager.Editor
                 WWWForm formData = new();
                 formData.AddField("refresh_token", authData.RefreshToken);
 
-                using UnityWebRequest req = UnityWebRequest.Post(Constants.API_BASE_URL + "auth/refresh-token", formData);
+                using UnityWebRequest req = UnityWebRequest.Post(Constants.API_ROUTE_REFRESH_TOKEN, formData);
                 await req.SendWebRequest();
 
                 if (req.result != UnityWebRequest.Result.Success)

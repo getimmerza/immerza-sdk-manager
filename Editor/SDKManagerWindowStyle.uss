@@ -4,3 +4,11 @@
 
 .unity-tab-view__reorderable {
 }
+
+.unity-tab-view__header-container {
+    width: 100%;
+}
+
+.unity-tab__header {
+    flex-grow: 1;
+}
