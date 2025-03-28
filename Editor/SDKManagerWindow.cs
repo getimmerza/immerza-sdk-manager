@@ -29,7 +29,7 @@ namespace ImmerzaSDK.Manager.Editor
 
     public class SDKManagerWindow : EditorWindow
     {
-        private const string ReleaseEndpoint = "https://api.github.com/repos/getimmerza/immerza-sdk-package/releases";
+        private readonly Release InvalidRelease = new Release(string.Empty, "None");
 
         [SerializeField] 
         private VisualTreeAsset _treeAssetMainPage = null;
@@ -47,15 +47,15 @@ namespace ImmerzaSDK.Manager.Editor
 
 #region Update UI Elements
         private Label _crtVersionField = null;
-        private DropdownField _versionField = null;
+        private Label _crtNewVersionField = null;
         private Button _refreshBtn = null;
         private Button _updateBtn = null;
         private Button _logoutBtn = null;
         private Label _successLabel = null;
 #endregion
         
-        private List<Release> _releases = new();
-        private string _crtVersion = string.Empty;
+        private Release _currentRelease;
+        private string _installedVersion = string.Empty;
         private AuthData _authData;
 
         [MenuItem("Immerza/SDK Manager")]
@@ -103,22 +103,25 @@ namespace ImmerzaSDK.Manager.Editor
             VisualElement mainPageRoot = rootVisualElement.Q<VisualElement>("MainPage");
 
             _crtVersionField = mainPageRoot.Q<Label>("CurrentVersion");
-            _versionField = mainPageRoot.Q<DropdownField>("VersionField");
+            _crtNewVersionField = mainPageRoot.Q<Label>("NewVersion");
             _refreshBtn = mainPageRoot.Q<Button>("RefreshButton");
             _updateBtn = mainPageRoot.Q<Button>("UpdateButton");
             _logoutBtn = mainPageRoot.Q<Button>("LogoutButton");
             _successLabel = mainPageRoot.Q<Label>("SuccessLabel");
             _successLabel.visible = false;
 
-            _refreshBtn.clicked += async () => await Refresh();
+            _refreshBtn.clicked += async () => await CheckForNewSdkVersion();
             _logoutBtn.clicked += Logout;
 
-            //_crtVersion = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt").text;
-            _crtVersionField.text = _crtVersion;
+            TextAsset installedVersion = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt");
+            if (installedVersion != null)
+            {
+                _installedVersion = installedVersion.text;
+            }
 
-            _versionField.RegisterCallback<PointerDownEvent>(evt => ChooseRelease());
+            _crtVersionField.text = string.IsNullOrEmpty(_installedVersion) ? "None" : _installedVersion;
 
-            await Refresh();
+            await CheckForNewSdkVersion();
         }
 
         public async void CreateGUI()
@@ -160,21 +163,16 @@ namespace ImmerzaSDK.Manager.Editor
             await initializeMainPage();
         }
 
-        private async Awaitable Refresh()
+        private async Awaitable CheckForNewSdkVersion()
         {
             SetButton(_updateBtn, false);
-            _versionField.choices.Clear();
+            _crtNewVersionField.text = string.Empty;
 
-            if (await GetReleases())
+            _currentRelease = await GetReleases();
+            if (IsNewThanInstalledRelease(_currentRelease))
             {
-                foreach (Release release in _releases)
-                {
-                    _versionField.choices.Add(release.Version);
-                }
-
-                _versionField.SetValueWithoutNotify(_releases.ToArray()[0].Version);
-
-                SetButton(_updateBtn, CheckVersion());
+                SetButton(_updateBtn, true);
+                _crtNewVersionField.text = string.Format("Update {0}", _currentRelease.Version);
             }
         }
 
@@ -185,44 +183,71 @@ namespace ImmerzaSDK.Manager.Editor
             initializeAuthPage();
         }
 
-        private void ChooseRelease()
+        private async Task<Release> GetReleases()
         {
-            SetButton(_updateBtn, CheckVersion());
-        }
+            if (!await Auth.CheckAuthData(_authData))
+            {
+                return InvalidRelease;
+            }
 
-        private async Task<bool> GetReleases()
-        {
-            using UnityWebRequest releasesReq = UnityWebRequest.Get(ReleaseEndpoint);
+            using UnityWebRequest releasesReq = UnityWebRequest.Get(Constants.API_ROUTE_RELEASES);
+            releasesReq.SetRequestHeader("Authorization", _authData.AccessToken);
+            releasesReq.SetRequestHeader("Accept", "application/json");
             await releasesReq.SendWebRequest();
 
             if (releasesReq.result != UnityWebRequest.Result.Success)
             {
                 SetLabelMsg(_successLabel, false, "Network Error, couldn't get releases.");
-                return false;
+                return InvalidRelease;
             }
 
-            JArray releaseArray = JArray.Parse(releasesReq.downloadHandler.text);
+            Release releaseInfo = InvalidRelease;
 
-            foreach (JObject release in releaseArray.Cast<JObject>())
+            try
             {
-                Release newRelease = new(
-                    (string)release["tag_name"],
-                    (string)release["tarball_url"]
-                );
+                JObject release = JObject.Parse(releasesReq.downloadHandler.text);
+                JToken firstEntry = release["entry"][0];
+                JToken versionInfo = firstEntry["resource"]["extension"];
 
-                _releases.Add(newRelease);
+                string version = string.Empty;
+                string fileId = string.Empty;
+                string changelog = string.Empty;
+                foreach (JToken metaData in versionInfo.ToArray())
+                {
+                    string identifier = metaData["url"].Value<string>() ?? string.Empty;
+                    string value = metaData["valueString"].Value<string>() ?? string.Empty;
+                    switch (identifier)
+                    {
+                        case "version":
+                            version = value;
+                            break;
+                        case "fileId":
+                            fileId = value;
+                            break;
+                        case "changelog":
+                            changelog = value;
+                            break;
+                    }
+                }
+
+                releaseInfo = new Release(version, fileId);
+
+            }
+            catch (ArgumentException)
+            {
             }
 
-            return true;
+            return releaseInfo;
         }
 
-        private bool CheckVersion()
+        private bool IsNewThanInstalledRelease(Release releaseInfo)
         {
-            string chosenVersion = _versionField.value;
+            if (releaseInfo.Equals(InvalidRelease) || string.IsNullOrEmpty(_installedVersion))
+            {
+                return true;
+            }
 
-            int compRes = CompareVersions(chosenVersion, _versionField.value);
-
-            return compRes > 0;
+            return CompareVersions(_installedVersion, releaseInfo.Version) > 0;
         }
 
         private void SetButton(Button button, bool activate)
