@@ -1,0 +1,10 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/ImmerzaSDKManager/Editor/SDKManagerWindowStyle.uss?fileID=7433441132597879392&amp;guid=2719ca9c4c9c7714fb6a261622be3c63&amp;type=3#SDKManagerWindowStyle" />
+    <ui:VisualElement name="AuthPage" enabled="true" style="flex-grow: 1; position: relative; flex-wrap: wrap-reverse; flex-shrink: 1; align-items: center; justify-content: center; align-content: center; display: flex; flex-direction: column;">
+        <ui:Label text="Please sign in with your Immerza Account" parse-escape-sequences="false" name="Label" style="font-size: 13px;" />
+        <ui:TextField label="Email:" placeholder-text="..." name="EmailField" view-data-key="EmailField" enabled="true" password="false" hide-placeholder-on-focus="false" multiline="false" auto-correction="false" hide-mobile-input="false" is-delayed="false" style="width: 90%; justify-content: flex-start; flex-direction: column; border-top-left-radius: 0; height: 50px; font-size: 15px;" />
+        <ui:TextField label="Password:" placeholder-text="..." name="PasswordField" view-data-key="PasswordField" enabled="true" password="true" hide-placeholder-on-focus="false" multiline="false" auto-correction="false" hide-mobile-input="false" is-delayed="false" style="width: 90%; justify-content: flex-start; flex-direction: column; height: 50px; font-size: 15px;" />
+        <ui:Label name="AuthMessage" enabled="true" style="margin-top: 8px;" />
+        <ui:Button text="Sign In" name="SignInButton" view-data-key="SignInButton" selectable="false" style="width: 80px; height: 30px; margin-top: 8px;" />
+    </ui:VisualElement>
+</ui:UXML>

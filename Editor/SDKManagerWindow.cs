@@ -32,12 +32,13 @@ namespace ImmerzaSDK.Manager.Editor
         private const string ReleaseEndpoint = "https://api.github.com/repos/getimmerza/immerza-sdk-package/releases";
 
         [SerializeField] 
-        private VisualTreeAsset _treeAsset = null;
+        private VisualTreeAsset _treeAssetMainPage = null;
+        [SerializeField]
+        private VisualTreeAsset _treeAssetAuthPage = null;
         [SerializeField]
         private Sprite _logo = null;
 
 #region Auth UI Elements
-        private VisualElement _authRoot = null;
         private TextField _emailField = null;
         private TextField _passwordField = null;
         private Label _authMessage = null;
@@ -45,7 +46,6 @@ namespace ImmerzaSDK.Manager.Editor
 #endregion
 
 #region Update UI Elements
-        private VisualElement _updateRoot = null;
         private Label _crtVersionField = null;
         private DropdownField _versionField = null;
         private Button _refreshBtn = null;
@@ -55,69 +55,81 @@ namespace ImmerzaSDK.Manager.Editor
         
         private List<Release> _releases = new();
         private string _crtVersion = string.Empty;
-
         private AuthData _authData;
-
-        #region AuthPage
-
-        #endregion
 
         [MenuItem("Immerza/SDK Manager")]
         public static void ShowWindow()
         {
-            SDKManagerWindow window = GetWindow<SDKManagerWindow>("Immerza SDK Manager");
+            GetWindow<SDKManagerWindow>("Immerza SDK Manager");
         }
 
-        public async void CreateGUI()
+        private void clearVisualRoot()
         {
-            VisualElement root = rootVisualElement;
-            _treeAsset.CloneTree(root);
-            _authRoot = root.Q<VisualElement>("AuthPage");
-            _updateRoot = root.Q<VisualElement>("UpdatePage");
+            rootVisualElement.Clear();
+        }
 
-            if (string.IsNullOrEmpty(EditorPrefs.GetString("immerza_refresh_token")))
+        private void initializeAuthPage()
+        {
+            clearVisualRoot();
+
+            _treeAssetAuthPage.CloneTree(rootVisualElement);
+            VisualElement authRoot = rootVisualElement.Q<VisualElement>("AuthPage");
+
+            Image immerzaLogo = new()
             {
-                Image immerzaLogo = new()
-                {
-                    scaleMode = ScaleMode.ScaleToFit,
-                    sprite = _logo
-                };
-                immerzaLogo.style.marginTop = 20.0f;
-                immerzaLogo.style.marginLeft = 10.0f;
-                immerzaLogo.style.marginRight = 10.0f;
-                immerzaLogo.style.marginBottom = 20.0f;
-                
-                _authRoot.Insert(0, immerzaLogo);
-            }
+                scaleMode = ScaleMode.ScaleToFit,
+                sprite = _logo
+            };
+            immerzaLogo.style.marginTop = 20.0f;
+            immerzaLogo.style.marginLeft = 10.0f;
+            immerzaLogo.style.marginRight = 10.0f;
+            immerzaLogo.style.marginBottom = 20.0f;
 
-            _emailField = _authRoot.Q<TextField>("EmailField");
-            _passwordField = _authRoot.Q<TextField>("PasswordField");
-            _authMessage = _authRoot.Q<Label>("AuthMessage");
-            _signInButton = _authRoot.Q<Button>("SignInButton");
+            authRoot.Insert(0, immerzaLogo);
+
+            _emailField = authRoot.Q<TextField>("EmailField");
+            _passwordField = authRoot.Q<TextField>("PasswordField");
+            _authMessage = authRoot.Q<Label>("AuthMessage");
+            _signInButton = authRoot.Q<Button>("SignInButton");
             _signInButton.clicked += HandleSignIn;
+        }
 
-            _crtVersionField = _updateRoot.Q<Label>("CurrentVersion");
-            _versionField = _updateRoot.Q<DropdownField>("VersionField");
-            _refreshBtn = _updateRoot.Q<Button>("RefreshButton");
-            _updateBtn = _updateRoot.Q<Button>("UpdateButton");
-            _successLabel = _updateRoot.Q<Label>("SuccessLabel");
+        private async Awaitable initializeMainPage()
+        {
+            clearVisualRoot();
+
+            _treeAssetMainPage.CloneTree(rootVisualElement);
+            VisualElement mainPageRoot = rootVisualElement.Q<VisualElement>("MainPage");
+
+            _crtVersionField = mainPageRoot.Q<Label>("CurrentVersion");
+            _versionField = mainPageRoot.Q<DropdownField>("VersionField");
+            _refreshBtn = mainPageRoot.Q<Button>("RefreshButton");
+            _updateBtn = mainPageRoot.Q<Button>("UpdateButton");
+            _successLabel = mainPageRoot.Q<Label>("SuccessLabel");
             _successLabel.visible = false;
 
-            _refreshBtn.clicked += async() => await Refresh();
+            _refreshBtn.clicked += async () => await Refresh();
 
             //_crtVersion = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt").text;
             _crtVersionField.text = _crtVersion;
 
             _versionField.RegisterCallback<PointerDownEvent>(evt => ChooseRelease());
 
+            await Refresh();
+        }
+
+        public async void CreateGUI()
+        {
+            VisualElement root = rootVisualElement;
+
             _authData = await Auth.Setup();
             if (_authData != null)
             {
-                _authRoot.enabledSelf = false;
-                _authRoot.visible = false;
-                _updateRoot.enabledSelf = true;
-                _updateRoot.visible = true;
-                await Refresh();
+                await initializeMainPage();
+            }
+            else
+            {
+                initializeAuthPage();
             }
         }
 
@@ -142,12 +154,7 @@ namespace ImmerzaSDK.Manager.Editor
                 return;
             }
 
-            _signInButton.SetEnabled(true);
-            _authRoot.SetEnabled(false);
-            _authRoot.visible = false;
-            _updateRoot.SetEnabled(true);
-            _updateRoot.visible = true;
-            
+            await initializeMainPage();
         }
 
         private async Awaitable Refresh()
