@@ -121,7 +121,7 @@ namespace ImmerzaSDK.Manager.Editor
                 if (expiresIn != null)
                     newAuthData.ExpiresIn = DateTimeOffset.Now.ToUnixTimeSeconds() + expiresIn.Value<long>() - 20;
             }
-            catch (ArgumentException e)
+            catch (ArgumentException)
             {
                 newAuthData = InvalidAuthData;
             }
