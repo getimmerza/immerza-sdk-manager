@@ -21,7 +21,7 @@
         </ui:Tab>
         <ui:Tab label="Account" name="AccountTab" view-data-key="AccountTab" style="flex-basis: auto; align-items: flex-end;">
             <ui:VisualElement style="flex-grow: 1; width: 100%; height: 100%;">
-                <ui:Button text="Button" />
+                <ui:Button text="Logout" name="LogoutButton" />
             </ui:VisualElement>
         </ui:Tab>
     </ui:TabView>

@@ -1,3 +1,4 @@
+using Codice.Client.Common;
 using Newtonsoft.Json.Linq;
 using System;
 using UnityEditor;
@@ -10,13 +11,20 @@ namespace ImmerzaSDK.Manager.Editor
 {
     internal class AuthData
     {
-        public string AccessToken { get; set; }
-        public string RefreshToken { get; set; }
-        public long ExpiresIn { get; set; }
+        public string AccessToken { get; set; } = string.Empty;
+        public string RefreshToken { get; set; } = string.Empty;
+        public long ExpiresIn { get; set; } = 0;
+        public bool IsExpired => ExpiresIn == 0 || ExpiresIn <= DateTimeOffset.Now.ToUnixTimeSeconds();
     }
 
     internal static class Auth
     {
+        private const string KEY_ACCESS_TOKEN  = "ImmerzaAccessToken";
+        private const string KEY_REFRESH_TOKEN = "ImmerzaRefreshToken";
+        private const string KEY_TOKEN_EXPIRE  = "ImmerzaTokenExpiration";
+
+        internal static readonly AuthData InvalidAuthData = new();
+
         internal async static Awaitable<(AuthData, string)> SignIn(string email, string password)
         {
             WWWForm formData = new();
@@ -34,23 +42,14 @@ namespace ImmerzaSDK.Manager.Editor
                 return (null, (string)resObj["message"]);
             }
 
-            AuthData newAuthData = new()
-            {
-                AccessToken = (string)resObj["refreshToken"],
-                RefreshToken = "Bearer " + (string)resObj["accessToken"],
-                ExpiresIn = DateTimeOffset.Now.ToUnixTimeSeconds() + (long)resObj["expiresIn"] - 20
-            };
-
-            EditorPrefs.SetString("ImmerzaAccessToken", newAuthData.AccessToken);
-            EditorPrefs.SetString("ImmerzaRefreshToken", newAuthData.RefreshToken);
-            EditorPrefs.SetString("ImmerzaTokenExpiration", newAuthData.ExpiresIn.ToString());
-
+            AuthData newAuthData = createAuthDataFromLoginResponse(resObj);
+            storeAuthData(newAuthData);
             return (newAuthData, "Sign in successful!");
         }
 
         internal async static Awaitable<bool> CheckAuthData(AuthData authData)
         {
-            if (authData.ExpiresIn <= DateTimeOffset.Now.ToUnixTimeSeconds())
+            if (authData.IsExpired)
             {
                 WWWForm formData = new();
                 formData.AddField("refresh_token", authData.RefreshToken);
@@ -64,16 +63,8 @@ namespace ImmerzaSDK.Manager.Editor
                 }
 
                 JObject resObj = JObject.Parse(req.downloadHandler.text);
-
-                authData.AccessToken = (string)resObj["refreshToken"];
-                authData.RefreshToken = "Bearer " + (string)resObj["accessToken"];
-                authData.ExpiresIn = DateTimeOffset.Now.ToUnixTimeSeconds() + (long)resObj["expiresIn"] - 20;
-
-                EditorPrefs.SetString("ImmerzaAccessToken", authData.AccessToken);
-                EditorPrefs.SetString("ImmerzaRefreshToken", authData.RefreshToken);
-                EditorPrefs.SetString("ImmerzaTokenExpiration", authData.ExpiresIn.ToString());
-
-                return true;
+                authData = createAuthDataFromLoginResponse(resObj);
+                storeAuthData(authData);
             }
 
             return true;
@@ -81,14 +72,61 @@ namespace ImmerzaSDK.Manager.Editor
 
         internal async static Awaitable<AuthData> Setup()
         {
-            AuthData authData = new()
-            {
-                AccessToken = EditorPrefs.HasKey("ImmerzaAccessToken") ? EditorPrefs.GetString("ImmerzaAccessToken") : "",
-                RefreshToken = EditorPrefs.HasKey("ImmerzaAccessToken") ? EditorPrefs.GetString("ImmerzaAccessToken") : "",
-                ExpiresIn = EditorPrefs.HasKey("ImmerzaAccessToken") ? long.Parse(EditorPrefs.GetString("ImmerzaTokenExpiration")) : 0
-            };
-
+            AuthData authData = loadAuthData();
             return await CheckAuthData(authData) ? authData : null;
+        }
+
+        internal static void ClearLogoutData()
+        {
+            storeAuthData(InvalidAuthData);
+        }
+
+        private static void storeAuthData(AuthData authData)
+        {
+            EditorPrefs.SetString(KEY_ACCESS_TOKEN, authData.AccessToken);
+            EditorPrefs.SetString(KEY_REFRESH_TOKEN, authData.RefreshToken);
+            EditorPrefs.SetString(KEY_TOKEN_EXPIRE, authData.ExpiresIn.ToString());
+        }
+        private static AuthData loadAuthData()
+        {
+            AuthData authData = new();
+
+            if (EditorPrefs.HasKey(KEY_ACCESS_TOKEN) && EditorPrefs.HasKey(KEY_REFRESH_TOKEN) && EditorPrefs.HasKey(KEY_TOKEN_EXPIRE))
+            {
+                authData.AccessToken = EditorPrefs.GetString(KEY_ACCESS_TOKEN);
+                authData.RefreshToken = EditorPrefs.GetString(KEY_REFRESH_TOKEN);
+                if (long.TryParse(EditorPrefs.GetString(KEY_TOKEN_EXPIRE), out long tokenExpiresIn))
+                {
+                    authData.ExpiresIn = tokenExpiresIn;
+                }
+            }
+
+            return authData.IsExpired ? InvalidAuthData : authData;
+        }
+        private static AuthData createAuthDataFromLoginResponse(JObject response)
+        {
+            AuthData newAuthData = new();
+
+            try
+            {
+                JToken refreshToken = response["refreshToken"];
+                if (refreshToken != null)
+                    newAuthData.RefreshToken = refreshToken.Value<string>();
+
+                JToken accessToken = response["accessToken"];
+                if (accessToken != null)
+                    newAuthData.AccessToken = string.Format("Bearer {0}", accessToken.Value<string>());
+
+                JToken expiresIn = response["expiresIn"];
+                if (expiresIn != null)
+                    newAuthData.ExpiresIn = DateTimeOffset.Now.ToUnixTimeSeconds() + expiresIn.Value<long>() - 20;
+            }
+            catch (ArgumentException e)
+            {
+                newAuthData = InvalidAuthData;
+            }
+
+            return newAuthData;
         }
     }
 }
