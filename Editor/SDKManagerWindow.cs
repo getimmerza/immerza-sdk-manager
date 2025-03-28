@@ -50,6 +50,7 @@ namespace ImmerzaSDK.Manager.Editor
         private DropdownField _versionField = null;
         private Button _refreshBtn = null;
         private Button _updateBtn = null;
+        private Button _logoutBtn = null;
         private Label _successLabel = null;
 #endregion
         
@@ -105,10 +106,12 @@ namespace ImmerzaSDK.Manager.Editor
             _versionField = mainPageRoot.Q<DropdownField>("VersionField");
             _refreshBtn = mainPageRoot.Q<Button>("RefreshButton");
             _updateBtn = mainPageRoot.Q<Button>("UpdateButton");
+            _logoutBtn = mainPageRoot.Q<Button>("LogoutButton");
             _successLabel = mainPageRoot.Q<Label>("SuccessLabel");
             _successLabel.visible = false;
 
             _refreshBtn.clicked += async () => await Refresh();
+            _logoutBtn.clicked += Logout;
 
             //_crtVersion = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt").text;
             _crtVersionField.text = _crtVersion;
@@ -173,6 +176,13 @@ namespace ImmerzaSDK.Manager.Editor
 
                 SetButton(_updateBtn, CheckVersion());
             }
+        }
+
+        private void Logout()
+        {
+            Auth.ClearLogoutData();
+            _authData = Auth.InvalidAuthData;
+            initializeAuthPage();
         }
 
         private void ChooseRelease()
