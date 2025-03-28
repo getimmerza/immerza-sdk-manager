@@ -51,10 +51,8 @@ namespace ImmerzaSDK.Manager.Editor
         {
             if (authData.IsExpired)
             {
-                WWWForm formData = new();
-                formData.AddField("refresh_token", authData.RefreshToken);
-
-                using UnityWebRequest req = UnityWebRequest.Post(Constants.API_ROUTE_REFRESH_TOKEN, formData);
+                using UnityWebRequest req = UnityWebRequest.Post(Constants.API_ROUTE_REFRESH_TOKEN, $"{{\"refresh_token\": \"{authData.RefreshToken}\"}}", "application/json");
+                req.SetRequestHeader("Content-Type", "application/json");
                 await req.SendWebRequest();
 
                 if (req.result != UnityWebRequest.Result.Success)
