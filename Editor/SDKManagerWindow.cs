@@ -16,24 +16,30 @@ using System.Threading.Tasks;
 using System.IO.Compression;
 using UnityEngine.Windows;
 using UnityEditor.Build;
+using UnityEditor.Search;
+using Unity.VisualScripting.YamlDotNet.Core.Tokens;
 
 namespace ImmerzaSDK.Manager.Editor
 {
-    internal struct Release
+    internal struct ReleaseInfo
     {
-        public Release(string version, string url)
+        public ReleaseInfo(string version, string url, string changelog, long date)
         {
             Version = version;
             Url = url;
+            Changelog = changelog;
+            Date = date;
         }
 
         public string Version { get; }
         public string Url { get; }
+        public string Changelog { get; }
+        public long Date { get; }
     }
 
     public class SDKManagerWindow : EditorWindow
     {
-        private readonly Release InvalidRelease = new Release(string.Empty, "None");
+        private static readonly ReleaseInfo InvalidRelease = new ReleaseInfo(string.Empty, "None", string.Empty, 0);
 
         [SerializeField]
         private VisualTreeAsset _treeAssetMainPage = null;
@@ -51,16 +57,20 @@ namespace ImmerzaSDK.Manager.Editor
 
         #region Main Page UI Elements
         private Label _crtVersionField = null;
-        private Label _crtNewVersionField = null;
         private Button _refreshBtn = null;
         private Button _updateBtn = null;
         private Button _logoutBtn = null;
         private ProgressBar _progressBar = null;
         private Label _successLabel = null;
+        private Label _releaseNotes = null;
         #endregion
 
-        private Release _currentRelease;
-        private string _installedVersion = string.Empty;
+#region Account Page UI Elements
+        private Label _userNameLabel = null;
+        private Label _userMailLabel = null;
+#endregion
+
+        private ReleaseInfo _currentReleaseInfo;
         private AuthData _authData;
 
         [MenuItem("Immerza/SDK Manager")]
@@ -97,7 +107,18 @@ namespace ImmerzaSDK.Manager.Editor
             _passwordField = authRoot.Q<TextField>("PasswordField");
             _authMessage = authRoot.Q<Label>("AuthMessage");
             _signInButton = authRoot.Q<Button>("SignInButton");
+
             _signInButton.clicked += HandleSignIn;
+
+            EventCallback<KeyDownEvent> onKeyDown = (KeyDownEvent ev) =>
+            {
+                if (ev.keyCode == KeyCode.Return)
+                {
+                    HandleSignIn();
+                }
+            };
+            _emailField.RegisterCallback<KeyDownEvent>(onKeyDown, TrickleDown.TrickleDown);
+            _passwordField.RegisterCallback<KeyDownEvent>(onKeyDown, TrickleDown.TrickleDown);
         }
 
         private async Awaitable initializeMainPage()
@@ -108,7 +129,7 @@ namespace ImmerzaSDK.Manager.Editor
             VisualElement mainPageRoot = rootVisualElement.Q<VisualElement>("MainPage");
 
             _crtVersionField = mainPageRoot.Q<Label>("CurrentVersion");
-            _crtNewVersionField = mainPageRoot.Q<Label>("NewVersion");
+            _releaseNotes = mainPageRoot.Q<Label>("ReleaseNotes");
             _refreshBtn = mainPageRoot.Q<Button>("RefreshButton");
             _updateBtn = mainPageRoot.Q<Button>("UpdateButton");
             _logoutBtn = mainPageRoot.Q<Button>("LogoutButton");
@@ -118,6 +139,11 @@ namespace ImmerzaSDK.Manager.Editor
             _progressBar = mainPageRoot.Q<ProgressBar>("DownloadProgress");
             _refreshBtn.clicked += async () => await CheckForNewSdkVersion();
             _updateBtn.clicked += async () => await InstallOrUpdateSdk();
+
+            _userNameLabel = mainPageRoot.Q<Label>("UserNameLabel");
+            _userNameLabel.text = _authData.User.Name;
+            _userMailLabel = mainPageRoot.Q<Label>("UserMailLabel");
+            _userMailLabel.text = _authData.User.Mail;
 
             _logoutBtn.clicked += Logout;
 
@@ -161,37 +187,51 @@ namespace ImmerzaSDK.Manager.Editor
             await initializeMainPage();
         }
 
+        private bool LoadInstalledVersionInfo(out string version, out DateTime date)
+        {
+            version = string.Empty;
+            date = DateTime.MinValue;
+
+            string versionInfo = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt")?.text ?? string.Empty;
+            if (!string.IsNullOrEmpty(versionInfo))
+            {
+                string[] parts = versionInfo.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length == 2)
+                {
+                    version = parts[0];
+                    try
+                    {
+                        if (long.TryParse(parts[1], out long timestamp))
+                            date = DateTimeOffset.FromUnixTimeSeconds(timestamp).DateTime;
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            return date != DateTime.MinValue;
+        }
+
         private async Awaitable CheckForNewSdkVersion()
         {
-            _currentRelease = await GetReleases();
-
-            TextAsset installedVersion = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/Immerza/Version.txt");
-            if (installedVersion != null)
+            _currentReleaseInfo = await GetLatestReleaseInfo();
+            
+            if (LoadInstalledVersionInfo(out string installedVersion, out DateTime installedVersionDate))
             {
-                _installedVersion = installedVersion.text;
-                _updateBtn.text = "Update";
-                _crtVersionField.text = _installedVersion;
+                _updateBtn.text = $"Update to {_currentReleaseInfo.Version}";
+                _crtVersionField.text = $"{installedVersion} · {installedVersionDate.ToString("MMMM dd, yyyy")}";
             }
             else
             {
-                _updateBtn.text = "Install";
-                _crtVersionField.text = "None";
-                _crtNewVersionField.text = _currentRelease.Version;
-                return;
+                _updateBtn.text = $"Install {_currentReleaseInfo.Version}";
+                _crtVersionField.text = "N/A";
             }
 
-            SetButton(_updateBtn, false);
-            _crtNewVersionField.text = string.Empty;
-
-            if (IsNewerThanInstalledRelease(_currentRelease))
-            {
-                SetButton(_updateBtn, true);
-                _crtNewVersionField.text = _currentRelease.Version;
-            }
-            else
-            {
-                _crtNewVersionField.text = "Newest version installed.";
-            }
+            bool updateAvailable = IsNewerThanInstalledRelease(_currentReleaseInfo, installedVersion);
+            _releaseNotes.text = _currentReleaseInfo.Changelog;
+            _updateBtn.style.display = updateAvailable ? DisplayStyle.Flex : DisplayStyle.None; 
         }
 
         private void Logout()
@@ -201,7 +241,7 @@ namespace ImmerzaSDK.Manager.Editor
             initializeAuthPage();
         }
 
-        private async Task<Release> GetReleases()
+        private async Task<ReleaseInfo> GetLatestReleaseInfo()
         {
             if (!await Auth.CheckAuthData(_authData))
             {
@@ -219,7 +259,7 @@ namespace ImmerzaSDK.Manager.Editor
                 return InvalidRelease;
             }
 
-            Release releaseInfo = InvalidRelease;
+            ReleaseInfo releaseInfo = InvalidRelease;
 
             try
             {
@@ -248,7 +288,9 @@ namespace ImmerzaSDK.Manager.Editor
                     }
                 }
 
-                releaseInfo = new Release(version, fileId);
+                JToken versionInfoLastUpdate = firstEntry["resource"]["meta"]["lastUpdated"];
+                DateTimeOffset dateTimeOffset = DateTimeOffset.Parse(versionInfoLastUpdate.Value<string>() ?? string.Empty);
+                releaseInfo = new ReleaseInfo(version, fileId, changelog, dateTimeOffset.ToUnixTimeSeconds());
 
             }
             catch (ArgumentException)
@@ -258,14 +300,14 @@ namespace ImmerzaSDK.Manager.Editor
             return releaseInfo;
         }
 
-        private bool IsNewerThanInstalledRelease(Release releaseInfo)
+        private static bool IsNewerThanInstalledRelease(ReleaseInfo releaseInfo, string installedVersion)
         {
-            if (releaseInfo.Equals(InvalidRelease) || string.IsNullOrEmpty(_installedVersion))
+            if (releaseInfo.Equals(InvalidRelease) || string.IsNullOrEmpty(installedVersion))
             {
                 return true;
             }
-
-            return CompareVersions(_installedVersion, releaseInfo.Version) < 0;
+            
+            return CompareVersions(installedVersion, releaseInfo.Version) < 0;
         }
 
         private async Awaitable InstallOrUpdateSdk()
@@ -275,23 +317,24 @@ namespace ImmerzaSDK.Manager.Editor
                 return;
             }
 
-            SetButton(_updateBtn, false);
+            //SetButton(_updateBtn, false);
 
-            using UnityWebRequest req = UnityWebRequest.Get(Constants.API_ROUTE_FILES + _currentRelease.Url);
+            using UnityWebRequest req = UnityWebRequest.Get(Constants.API_ROUTE_FILES + _currentReleaseInfo.Url);
             req.SetRequestHeader("Authorization", _authData.AccessToken);
             UnityWebRequestAsyncOperation op = req.SendWebRequest();
 
+            _progressBar.visible = true;
             while (!op.isDone)
             {
                 _progressBar.value = op.progress;
                 await Task.Delay(5);
             }
-
             _progressBar.value = 1.0f;
+            _progressBar.visible = false;
 
             if (req.result != UnityWebRequest.Result.Success)
             {
-                SetButton(_updateBtn, true);
+                //SetButton(_updateBtn, true);
                 return;
             }
 
@@ -307,7 +350,7 @@ namespace ImmerzaSDK.Manager.Editor
             ExtractZipContents(Constants.SDK_BASE_PATH + "SDK.zip", Constants.SDK_BASE_PATH);
             File.Delete(Constants.SDK_BASE_PATH + "SDK.zip");
 
-            File.WriteAllText(Constants.SDK_BASE_PATH + "Version.txt", _currentRelease.Version);
+            File.WriteAllText(Constants.SDK_BASE_PATH + "Version.txt", $"{_currentReleaseInfo.Version} {_currentReleaseInfo.Date}");
 
             PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Android, "IMMERZA_SDK_INSTALLED");
             PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, "IMMERZA_SDK_INSTALLED");
@@ -348,7 +391,7 @@ namespace ImmerzaSDK.Manager.Editor
             label.text = message;
         }
 
-        private int CompareVersions(string version1, string version2)
+        private static int CompareVersions(string version1, string version2)
         {
             Regex regex = new(@"^(?:v)?(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z0-9]+))?$");
 

@@ -1,5 +1,7 @@
 using Newtonsoft.Json.Linq;
 using System;
+using System.Net;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -8,8 +10,14 @@ using UnityEngine.UIElements;
 
 namespace ImmerzaSDK.Manager.Editor
 {
+    internal class User
+    {
+        public string Name { get; set; }
+        public string Mail { get; set; }
+    }
     internal class AuthData
     {
+        public User User { get; set; } = new User();
         public string AccessToken { get; set; } = string.Empty;
         public string RefreshToken { get; set; } = string.Empty;
         public long ExpiresIn { get; set; } = 0;
@@ -23,6 +31,21 @@ namespace ImmerzaSDK.Manager.Editor
         private const string KEY_TOKEN_EXPIRE  = "ImmerzaTokenExpiration";
 
         internal static readonly AuthData InvalidAuthData = new();
+
+        internal async static Task<(string, bool)> GetRequest(string route, string token)
+        {
+            using UnityWebRequest request = UnityWebRequest.Get(route);
+            request.SetRequestHeader("Authorization", token);
+            request.SetRequestHeader("Accept", "application/json");
+            await request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                return (request.downloadHandler.text, true);
+            }
+
+            return (string.Empty, false);
+        }
 
         internal async static Awaitable<(AuthData, string)> SignIn(string email, string password)
         {
@@ -42,7 +65,13 @@ namespace ImmerzaSDK.Manager.Editor
             }
 
             AuthData newAuthData = createAuthDataFromLoginResponse(resObj);
+            if (!await LoadUserData(newAuthData))
+            {
+                return (null, string.Empty);
+            }
+
             storeAuthData(newAuthData);
+
             return (newAuthData, "Sign in successful!");
         }
 
@@ -67,10 +96,42 @@ namespace ImmerzaSDK.Manager.Editor
             return true;
         }
 
+        internal async static Awaitable<bool> LoadUserData(AuthData authData)
+        {
+            if (!await CheckAuthData(authData))
+            {
+                return false;
+            }
+
+            (string data, bool success) = await GetRequest(Constants.API_ROUTE_USER_INFO, authData.AccessToken);
+            if (!success)
+            {
+                return false;
+            }
+
+            try
+            {
+                JObject result = JObject.Parse(data);
+                authData.User = new User();
+                authData.User.Name = result["membership"]["profile"]["display"].Value<string>();
+                authData.User.Mail = result["user"]["email"].Value<string>();
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         internal async static Awaitable<AuthData> Setup()
         {
             AuthData authData = loadAuthData();
-            return await CheckAuthData(authData) ? authData : null;
+            if (await LoadUserData(authData))
+            {
+                return authData;
+            }
+            return null;
         }
 
         internal static void ClearLogoutData()
