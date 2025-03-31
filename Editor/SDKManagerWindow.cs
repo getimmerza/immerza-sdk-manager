@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.IO.Compression;
 using UnityEngine.Windows;
 using UnityEditor.Search;
+using Unity.VisualScripting.YamlDotNet.Core.Tokens;
 
 namespace ImmerzaSDK.Manager.Editor
 {
@@ -105,7 +106,18 @@ namespace ImmerzaSDK.Manager.Editor
             _passwordField = authRoot.Q<TextField>("PasswordField");
             _authMessage = authRoot.Q<Label>("AuthMessage");
             _signInButton = authRoot.Q<Button>("SignInButton");
+
             _signInButton.clicked += HandleSignIn;
+
+            EventCallback<KeyDownEvent> onKeyDown = (KeyDownEvent ev) =>
+            {
+                if (ev.keyCode == KeyCode.Return)
+                {
+                    HandleSignIn();
+                }
+            };
+            _emailField.RegisterCallback<KeyDownEvent>(onKeyDown, TrickleDown.TrickleDown);
+            _passwordField.RegisterCallback<KeyDownEvent>(onKeyDown, TrickleDown.TrickleDown);
         }
 
         private async Awaitable initializeMainPage()
