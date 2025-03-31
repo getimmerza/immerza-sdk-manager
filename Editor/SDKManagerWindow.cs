@@ -15,6 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO.Compression;
 using UnityEngine.Windows;
+using UnityEditor.Build;
 
 namespace ImmerzaSDK.Manager.Editor
 {
@@ -41,14 +42,14 @@ namespace ImmerzaSDK.Manager.Editor
         [SerializeField]
         private Sprite _logo = null;
 
-#region Auth UI Elements
+        #region Auth UI Elements
         private TextField _emailField = null;
         private TextField _passwordField = null;
         private Label _authMessage = null;
         private Button _signInButton = null;
-#endregion
+        #endregion
 
-#region Main Page UI Elements
+        #region Main Page UI Elements
         private Label _crtVersionField = null;
         private Label _crtNewVersionField = null;
         private Button _refreshBtn = null;
@@ -56,8 +57,8 @@ namespace ImmerzaSDK.Manager.Editor
         private Button _logoutBtn = null;
         private ProgressBar _progressBar = null;
         private Label _successLabel = null;
-#endregion
-        
+        #endregion
+
         private Release _currentRelease;
         private string _installedVersion = string.Empty;
         private AuthData _authData;
@@ -263,7 +264,7 @@ namespace ImmerzaSDK.Manager.Editor
             {
                 return true;
             }
-            
+
             return CompareVersions(_installedVersion, releaseInfo.Version) < 0;
         }
 
@@ -282,7 +283,7 @@ namespace ImmerzaSDK.Manager.Editor
 
             while (!op.isDone)
             {
-                _progressBar.value = op.progress; 
+                _progressBar.value = op.progress;
                 await Task.Delay(5);
             }
 
@@ -307,6 +308,9 @@ namespace ImmerzaSDK.Manager.Editor
             File.Delete(Constants.SDK_BASE_PATH + "SDK.zip");
 
             File.WriteAllText(Constants.SDK_BASE_PATH + "Version.txt", _currentRelease.Version);
+
+            PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Android, "IMMERZA_SDK_INSTALLED");
+            PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, "IMMERZA_SDK_INSTALLED");
 
             AssetDatabase.Refresh();
 
@@ -379,11 +383,18 @@ namespace ImmerzaSDK.Manager.Editor
         private void ExtractZipContents(string zipPath, string extractPath)
         {
             using ZipArchive archive = ZipFile.OpenRead(zipPath);
+
+            int topLevelFolders = archive.Entries
+                .Select(e => e.FullName.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault())
+                .Where(f => f != null)
+                .Distinct()
+                .ToList().Count;
+
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
                 string entryPath = entry.FullName;
 
-                string fullPath = Path.Combine(extractPath, entryPath.Substring(entryPath.IndexOf('/') + 1));
+                string fullPath = Path.Combine(extractPath, entryPath.Substring(entryPath.IndexOf('/') + topLevelFolders == 1 ? 1 : 0));
 
                 if (entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\"))
                 {
