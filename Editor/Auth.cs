@@ -1,5 +1,3 @@
-using Codice.Client.Common;
-using GluonGui.Dialog;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Net;
