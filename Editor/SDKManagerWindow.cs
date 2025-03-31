@@ -61,8 +61,13 @@ namespace ImmerzaSDK.Manager.Editor
         private ProgressBar _progressBar = null;
         private Label _successLabel = null;
         private Label _releaseNotes = null;
+        #endregion
+
+#region Account Page UI Elements
+        private Label _userNameLabel = null;
+        private Label _userMailLabel = null;
 #endregion
-        
+
         private ReleaseInfo _currentReleaseInfo;
         private AuthData _authData;
 
@@ -121,6 +126,11 @@ namespace ImmerzaSDK.Manager.Editor
             _progressBar = mainPageRoot.Q<ProgressBar>("DownloadProgress");
             _refreshBtn.clicked += async () => await CheckForNewSdkVersion();
             _updateBtn.clicked += async () => await InstallOrUpdateSdk();
+
+            _userNameLabel = mainPageRoot.Q<Label>("UserNameLabel");
+            _userNameLabel.text = _authData.User.Name;
+            _userMailLabel = mainPageRoot.Q<Label>("UserMailLabel");
+            _userMailLabel.text = _authData.User.Mail;
 
             _logoutBtn.clicked += Logout;
 

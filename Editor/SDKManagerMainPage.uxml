@@ -23,8 +23,18 @@
             </ui:VisualElement>
         </ui:Tab>
         <ui:Tab label="Account" name="AccountTab" view-data-key="AccountTab" style="flex-basis: auto; align-items: center;">
-            <ui:VisualElement style="flex-grow: 1; width: auto; height: auto;">
-                <ui:Button text="Logout" name="LogoutButton" style="margin-top: 32px;" />
+            <ui:VisualElement name="AccountPage" style="flex-grow: 1; width: auto; height: auto;">
+                <ui:VisualElement style="flex-grow: 1;">
+                    <ui:GroupBox name="GroupBox" style="flex-direction: row; padding-bottom: 0; margin-top: 2px; margin-bottom: 1px; padding-right: 3px;">
+                        <ui:Label text="Name:" />
+                        <ui:Label text="*Name*" name="UserNameLabel" />
+                    </ui:GroupBox>
+                    <ui:GroupBox name="GroupBox" style="flex-direction: row; padding-top: 0; margin-top: 1px; padding-right: 3px;">
+                        <ui:Label text="E-Mail:" />
+                        <ui:Label text="*Email*" name="UserMailLabel" />
+                    </ui:GroupBox>
+                </ui:VisualElement>
+                <ui:Button text="Logout" name="LogoutButton" style="margin-top: 4px;" />
             </ui:VisualElement>
         </ui:Tab>
     </ui:TabView>
