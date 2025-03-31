@@ -2,8 +2,8 @@
     <Style src="project://database/Assets/ImmerzaSDKManager/Editor/SDKManagerWindowStyle.uss?fileID=7433441132597879392&amp;guid=2719ca9c4c9c7714fb6a261622be3c63&amp;type=3#SDKManagerWindowStyle" />
     <ui:TabView name="MainPage" view-data-key="MainPage" reorderable="true" tabindex="0" focusable="false" enabled="true" style="align-self: center; align-items: center; width: 100%; display: flex;">
         <ui:Tab label="Status" name="StatusTab" view-data-key="StatusTab" style="padding-right: 0; margin-left: 0; margin-top: 0; margin-right: 0; margin-bottom: 0; position: relative; width: auto; height: auto;" />
-        <ui:Tab label="Install &amp; Update" name="InstallTab" view-data-key="InstallTab" style="align-self: flex-end; align-content: flex-start; width: 100%; display: flex;">
-            <ui:VisualElement name="UpdatePage" enabled="true" focusable="false" style="flex-grow: 1; bottom: auto; display: flex; opacity: 1; visibility: visible; overflow: visible;">
+        <ui:Tab label="Install &amp; Update" name="InstallTab" view-data-key="InstallTab" style="align-self: flex-end; align-content: flex-start; width: 100%;">
+            <ui:VisualElement name="UpdatePage" enabled="true" focusable="false" style="flex-grow: 1; bottom: auto; opacity: 1; visibility: visible; overflow: visible; display: flex;">
                 <ui:VisualElement name="UpdatePageBody" style="flex-grow: 1; flex-direction: column; justify-content: space-between; flex-shrink: 1;">
                     <ui:GroupBox name="GroupBox" style="margin-left: 8px;">
                         <ui:Label text="Immerza SDK" style="-unity-font-style: bold; font-size: 20px; padding-bottom: 10px;" />
@@ -22,8 +22,8 @@
                 <ui:Label tabindex="-1" text="*" parse-escape-sequences="true" display-tooltip-when-elided="true" view-data-key="SuccessLabel" name="SuccessLabel" enable-rich-text="true" style="white-space: nowrap; -unity-text-align: middle-center; text-overflow: clip; justify-content: center; align-items: auto; align-self: center; border-left-color: rgba(0, 0, 0, 0); border-right-color: rgba(0, 0, 0, 0); border-top-color: rgba(0, 0, 0, 0); border-bottom-color: rgba(0, 0, 0, 0); background-color: rgba(0, 0, 0, 0); font-size: 16px; -unity-font-style: bold;" />
             </ui:VisualElement>
         </ui:Tab>
-        <ui:Tab label="Account" name="AccountTab" view-data-key="AccountTab" style="flex-basis: auto; align-items: flex-end;">
-            <ui:VisualElement style="flex-grow: 1; width: 100%; height: 100%;">
+        <ui:Tab label="Account" name="AccountTab" view-data-key="AccountTab" style="flex-basis: auto; align-items: center;">
+            <ui:VisualElement style="flex-grow: 1; width: auto; height: auto;">
                 <ui:Button text="Logout" name="LogoutButton" style="margin-top: 32px;" />
             </ui:VisualElement>
         </ui:Tab>
