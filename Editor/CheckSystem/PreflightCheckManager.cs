@@ -7,9 +7,10 @@ using UnityEngine;
 
 namespace ImmerzaSDK.Manager.Editor
 {
-    public class PreflightCheckManager
+    public static class PreflightCheckManager
     {
-        [MenuItem("Immerza/Run Preflight Checks")]
+        public static event Action<CheckResult> OnLogCheck;
+
         public static void RunChecks()
         {
             List<CheckResult> checkResults = new();
@@ -36,6 +37,8 @@ namespace ImmerzaSDK.Manager.Editor
                         Debug.LogError($"{checkResult.Message}", checkResult.ContextObject);
                         break;
                 }
+
+                OnLogCheck?.Invoke(checkResult);
             }
 
             Debug.Log($"Ran {checkResults.Count} test{(checkResults.Count > 1 ? "s" : "")}");
