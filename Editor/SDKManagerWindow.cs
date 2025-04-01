@@ -65,13 +65,23 @@ namespace ImmerzaSDK.Manager.Editor
         private Label _releaseNotes = null;
         #endregion
 
-#region Account Page UI Elements
+        #region Account Page UI Elements
         private Label _userNameLabel = null;
         private Label _userMailLabel = null;
-#endregion
+        #endregion
+
+        #region Status Page UI Elements
+        private GroupBox _errorBox = null;
+        private GroupBox _warningBox = null;
+        private Label _warningCountLabel = null;
+        private Label _errorCountLabel = null;
+        #endregion
 
         private ReleaseInfo _currentReleaseInfo;
         private AuthData _authData;
+
+        private int _errorCount = 0;
+        private int _warningCount = 0;
 
         [MenuItem("Immerza/SDK Manager")]
         public static void ShowWindow()
@@ -128,6 +138,11 @@ namespace ImmerzaSDK.Manager.Editor
             _treeAssetMainPage.CloneTree(rootVisualElement);
             VisualElement mainPageRoot = rootVisualElement.Q<VisualElement>("MainPage");
 
+            _errorBox = mainPageRoot.Q<GroupBox>("ErrorBox");
+            _warningBox = mainPageRoot.Q<GroupBox>("WarningBox");
+            _warningCountLabel = mainPageRoot.Q<Label>("WarningsCount");
+            _errorCountLabel = mainPageRoot.Q<Label>("ErrorsCount");
+
             _crtVersionField = mainPageRoot.Q<Label>("CurrentVersion");
             _releaseNotes = mainPageRoot.Q<Label>("ReleaseNotes");
             _refreshBtn = mainPageRoot.Q<Button>("RefreshButton");
@@ -146,6 +161,11 @@ namespace ImmerzaSDK.Manager.Editor
             _userMailLabel.text = _authData.User.Mail;
 
             _logoutBtn.clicked += Logout;
+
+#if IMMERZA_SDK_INSTALLED
+            PreflightCheckManager.OnLogCheck += HandleNewCheckResults;
+            DispatchChecks();
+#endif
 
             await CheckForNewSdkVersion();
         }
@@ -450,5 +470,28 @@ namespace ImmerzaSDK.Manager.Editor
                 }
             }
         }
+
+        #if IMMERZA_SDK_INSTALLED
+        private void DispatchChecks()
+        {
+            PreflightCheckManager.RunChecks();
+        }
+
+        private void HandleNewCheckResults(CheckResult res)
+        {
+            if (res.Type == ResultType.Error)
+            {
+                _errorCountLabel.text = Convert.ToString(++_errorCount);
+                Label newMsg = new(res.Message);
+                newMsg.AddToClassList("label-wrap");
+                _errorBox.Add(newMsg);
+            }
+            else if (res.Type == ResultType.Warning)
+            {
+                _warningCountLabel.text = Convert.ToString(++_warningCount);
+                _warningBox.Add(new Label(res.Message));
+            }
+        }
+        #endif
     }
 }

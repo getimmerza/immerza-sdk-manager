@@ -1,7 +1,9 @@
 {
     "name": "ImmerzaSDK.Manager.Editor",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "GUID:d8efea17edf20ca48ae145b8ad8330cb"
+    ],
     "includePlatforms": [
         "Editor"
     ],
