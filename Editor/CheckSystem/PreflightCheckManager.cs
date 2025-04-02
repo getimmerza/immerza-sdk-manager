@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.VersionControl;
 using UnityEngine;
 
 namespace ImmerzaSDK.Manager.Editor
 {
     public static class PreflightCheckManager
     {
-        public static event Action<List<CheckResult>> OnLogCheck;
+        public static event Action OnBeforeRunChecks;
+        public static event Action<ResultType, string> OnLogCheck;
 
         public static void RunChecks()
         {
@@ -17,28 +19,57 @@ namespace ImmerzaSDK.Manager.Editor
                 .SelectMany(s => s.GetTypes())
                 .Where(p => typeof(ICheckable).IsAssignableFrom(p) && p.IsClass).ToList();
 
+            CheckContext checkContext = new CheckContext();
+
+            OnBeforeRunChecks?.Invoke();
+
             foreach (Type crtType in types)
             {
-                ICheckable handlerInstance = (ICheckable)Activator.CreateInstance(crtType);
-                List<CheckResult> checkResultRes = handlerInstance.RunCheck();
-                
-                foreach (CheckResult checkResult in checkResultRes)
+                string displayName = crtType.Name;
+
+                foreach (Attribute attribute in Attribute.GetCustomAttributes(crtType))
                 {
-                    switch (checkResult.Type)
+                    if (attribute is CheckableAttribute checkableAttribute)
                     {
-                        case ResultType.Success:
-                            Debug.Log($"{checkResult.Message}", checkResult.ContextObject);
-                            break;
-                        case ResultType.Warning:
-                            Debug.LogWarning($"{checkResult.Message}", checkResult.ContextObject);
-                            break;
-                        case ResultType.Error:
-                            Debug.LogError($"{checkResult.Message}", checkResult.ContextObject);
-                            break;
+                        displayName = checkableAttribute.DisplayName;
+                        break;
                     }
                 }
 
-                OnLogCheck?.Invoke(checkResultRes);
+                ICheckable handlerInstance = (ICheckable)Activator.CreateInstance(crtType);
+
+                checkContext.Reset();
+                handlerInstance.RunCheck(checkContext);
+
+                if (checkContext.Results.Count() == 0)
+                {
+                    DispatchResult(ResultType.Success, $"{displayName}: succeeded", null);
+                }
+                else
+                {
+                    foreach (CheckResult checkResult in checkContext.Results)
+                    {
+                        DispatchResult(checkResult.Type, $"{displayName}: {checkResult.Message}", checkResult.ContextObject);
+                    }
+                }
+            }
+        }
+
+        private static void DispatchResult(ResultType type, string message, UnityEngine.Object contextObject)
+        {
+            OnLogCheck?.Invoke(type, message);
+
+            switch (type)
+            {
+                case ResultType.Success:
+                    Debug.Log(message, contextObject);
+                    break;
+                case ResultType.Warning:
+                    Debug.LogWarning(message, contextObject);
+                    break;
+                case ResultType.Error:
+                    Debug.LogError(message, contextObject);
+                    break;
             }
         }
     }

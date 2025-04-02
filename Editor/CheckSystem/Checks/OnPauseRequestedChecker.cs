@@ -5,9 +5,10 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
+[CheckableAttribute(displayName: "LUA OnPauseRequested Check")]
 public class OnPauseRequestedChecker : ICheckable
 {
-    List<CheckResult> ICheckable.RunCheck()
+    public void RunCheck(CheckContext context)
     {
         List<LuaAsset> scripts = CheckUtil.GetLuaAssets();
 
@@ -17,24 +18,10 @@ public class OnPauseRequestedChecker : ICheckable
         {
             if (regex.IsMatch(script.content))
             {
-                return new List<CheckResult> {
-                    new()
-                    {
-                        Type = ResultType.Success,
-                        Message = "OnPauseRequested check succeeded",
-                        ContextObject = null
-                    }
-                };
+                return;
             }
         }
 
-        return new List<CheckResult> {
-            new()
-            {
-                Type = ResultType.Error,
-                Message = "None of the Lua scripts implement OnPauseRequested, which is required before exporting.",
-                ContextObject = null
-            }
-        };
+        context.AddError("None of the Lua scripts implement OnPauseRequested, which is required before exporting.");
     }
 }

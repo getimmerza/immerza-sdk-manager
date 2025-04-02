@@ -139,7 +139,7 @@ namespace ImmerzaSDK.Manager.Editor
             VisualElement mainPageRoot = rootVisualElement.Q<VisualElement>("MainPage");
 
             _errorBox = mainPageRoot.Q<GroupBox>("ErrorBox");
-            _warningBox = mainPageRoot.Q<GroupBox>("WarningBox");
+            _warningBox = mainPageRoot.Q<GroupBox>("WarningsBox");
             _warningCountLabel = mainPageRoot.Q<Label>("WarningsCount");
             _errorCountLabel = mainPageRoot.Q<Label>("ErrorsCount");
 
@@ -164,6 +164,7 @@ namespace ImmerzaSDK.Manager.Editor
 
 #if IMMERZA_SDK_INSTALLED
             PreflightCheckManager.OnLogCheck += HandleNewCheckResults;
+            PreflightCheckManager.OnBeforeRunChecks += OnBeforeRunChecks;
             DispatchChecks();
 #endif
 
@@ -477,24 +478,31 @@ namespace ImmerzaSDK.Manager.Editor
             PreflightCheckManager.RunChecks();
         }
 
-        private void HandleNewCheckResults(List<CheckResult> checkResults)
+        private void HandleNewCheckResults(ResultType type, string message)
         {
-            foreach (CheckResult res in checkResults)
+            if (type == ResultType.Error)
             {
-                if (res.Type == ResultType.Error)
-                {
-                    _errorCountLabel.text = Convert.ToString(++_errorCount);
-                    Label newMsg = new(res.Message);
-                    newMsg.AddToClassList("label-wrap");
-                    _errorBox.Add(newMsg);
-                }
-                else if (res.Type == ResultType.Warning)
-                {
-                    _warningCountLabel.text = Convert.ToString(++_warningCount);
-                    _warningBox.Add(new Label(res.Message));
-                }
+                _errorCountLabel.text = Convert.ToString(++_errorCount);
+                Label newMsg = new(message);
+                newMsg.AddToClassList("label-wrap");
+                _errorBox.Add(newMsg);
+            }
+            else if (type == ResultType.Warning)
+            {
+                _warningCountLabel.text = Convert.ToString(++_warningCount);
+                _warningBox.Add(new Label(message));
             }
         }
-        #endif
+
+        private void OnBeforeRunChecks()
+        {
+            _warningCount = 0;
+            _errorCount = 0;
+            _errorBox.Clear();
+            _warningBox.Clear();
+            _warningCountLabel.text = "0";
+            _errorCountLabel.text = "0";
+        }
+#endif
     }
 }

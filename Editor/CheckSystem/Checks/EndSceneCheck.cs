@@ -3,9 +3,10 @@ using ImmerzaSDK.Manager.Editor;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
+[CheckableAttribute(displayName: "LUA EndScene Check")]
 public class EndSceneChecker : ICheckable
 {
-    List<CheckResult> ICheckable.RunCheck()
+    public void RunCheck(CheckContext context)
     {
         List<LuaAsset> scripts = CheckUtil.GetLuaAssets();
 
@@ -15,27 +16,10 @@ public class EndSceneChecker : ICheckable
         {
             if (regex.IsMatch(script.content))
             {
-                return new List<CheckResult> 
-                {
-                    new()
-                    {
-                        Type = ResultType.Success,
-                        Message = "EndScene() check succeeded",
-                        ContextObject = null
-                    }
-                };
-
+                return;
             }
         }
 
-        return new List<CheckResult> 
-        {
-            new()
-            {
-                Type = ResultType.Error,
-                Message = "None of the Lua scripts call EndScene(), which is required before exporting.",
-                ContextObject = null
-            }
-        };
+        context.AddError("None of the Lua scripts call EndScene(), which is required before exporting.");
     }
 }
