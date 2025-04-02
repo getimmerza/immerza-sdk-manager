@@ -1,8 +1,25 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
     <Style src="project://database/Assets/ImmerzaSDKManager/Editor/SDKManagerWindowStyle.uss?fileID=7433441132597879392&amp;guid=2719ca9c4c9c7714fb6a261622be3c63&amp;type=3#SDKManagerWindowStyle" />
     <ui:TabView name="MainPage" view-data-key="MainPage" reorderable="true" tabindex="0" focusable="false" enabled="true" style="align-self: center; align-items: center; width: 100%; display: flex;">
-        <ui:Tab label="Status" name="StatusTab" view-data-key="StatusTab" style="padding-right: 0; margin-left: 0; margin-top: 0; margin-right: 0; margin-bottom: 0; position: relative; width: auto; height: auto;" />
-        <ui:Tab label="Install &amp; Update" name="InstallTab" view-data-key="InstallTab" style="align-self: flex-end; align-content: flex-start; width: 100%;">
+        <ui:Tab label="Status" name="StatusTab" view-data-key="InstallTab" focusable="false" enabled="true" tabindex="0" icon-image="project://database/Packages/com.unity.xr.arfoundation/Assets/Textures/Info@2x.png?fileID=2800000&amp;guid=837129fe064064a0ea8a498d72e05698&amp;type=3#Info@2x" style="align-self: flex-end; align-content: flex-start; width: 100%;">
+            <ui:VisualElement name="StatusPage" style="flex-grow: 1; justify-content: flex-start; align-items: stretch; align-self: stretch;">
+                <ui:VisualElement name="ErrorsTitle" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label text="❌ Errors:" name="ErrorsTitle" style="font-size: 16px; margin-left: 12px; margin-top: 12px; margin-right: 12px; margin-bottom: 4px;" />
+                    <ui:Label text="0" name="ErrorsCount" style="font-size: 16px; margin-left: 0; margin-top: 12px; margin-right: 0; margin-bottom: 4px;" />
+                </ui:VisualElement>
+                <ui:ScrollView name="ErrorsList" style="margin-left: 12px;">
+                    <ui:GroupBox name="ErrorBox" />
+                </ui:ScrollView>
+                <ui:VisualElement name="WarningsTitle" style="flex-grow: 1; flex-direction: row;">
+                    <ui:Label text="⚠️ Warnings:" style="font-size: 16px; margin-left: 12px; margin-top: 12px; margin-right: 4px; margin-bottom: 4px;" />
+                    <ui:Label text="0" name="WarningsCount" style="font-size: 16px; margin-left: 0; margin-top: 12px; margin-right: 0; margin-bottom: 4px;" />
+                </ui:VisualElement>
+                <ui:ScrollView name="WarningsList" style="margin-left: 12px;">
+                    <ui:GroupBox name="WarningsBox" />
+                </ui:ScrollView>
+            </ui:VisualElement>
+        </ui:Tab>
+        <ui:Tab label="Install &amp; Update" name="InstallTab" view-data-key="InstallTab" focusable="false" enabled="true" tabindex="0" icon-image="project://database/Packages/com.unity.render-pipelines.core/Editor/LookDev/Icons/Rotation.png?fileID=2800000&amp;guid=2ee66e81975377745aaa59fe11ad374d&amp;type=3#Rotation" style="align-self: flex-end; align-content: flex-start; width: 100%;">
             <ui:VisualElement name="UpdatePage" enabled="true" focusable="false" style="flex-grow: 1; bottom: auto; opacity: 1; visibility: visible; overflow: visible; display: flex;">
                 <ui:VisualElement name="UpdatePageBody" style="flex-grow: 1; flex-direction: column; justify-content: space-between; flex-shrink: 1;">
                     <ui:GroupBox name="GroupBox" style="margin-left: 8px;">
@@ -14,15 +31,15 @@
                         </ui:VisualElement>
                         <ui:ProgressBar value="0" name="DownloadProgress" view-data-key="DownloadProgress" high-value="1" enabled="false" style="border-top-left-radius: 4px; border-top-right-radius: 4px; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; visibility: hidden;" />
                     </ui:GroupBox>
-                    <ui:Label text="Description" />
-                    <ui:ScrollView name="ScrollView" style="flex-grow: 2; padding-top: 5px; margin-top: 5px; padding-bottom: 5px; padding-left: 3px;">
+                    <ui:Label text="Description" style="margin-left: 8px;" />
+                    <ui:ScrollView name="ScrollView" style="flex-grow: 2; padding-top: 5px; margin-top: 5px; padding-bottom: 5px; padding-left: 3px; margin-left: 8px;">
                         <ui:Label name="ReleaseNotes" />
                     </ui:ScrollView>
                 </ui:VisualElement>
                 <ui:Label tabindex="-1" text="*" parse-escape-sequences="true" display-tooltip-when-elided="true" view-data-key="SuccessLabel" name="SuccessLabel" enable-rich-text="true" style="white-space: nowrap; -unity-text-align: middle-center; text-overflow: clip; justify-content: center; align-items: auto; align-self: center; border-left-color: rgba(0, 0, 0, 0); border-right-color: rgba(0, 0, 0, 0); border-top-color: rgba(0, 0, 0, 0); border-bottom-color: rgba(0, 0, 0, 0); background-color: rgba(0, 0, 0, 0); font-size: 16px; -unity-font-style: bold;" />
             </ui:VisualElement>
         </ui:Tab>
-        <ui:Tab label="Account" name="AccountTab" view-data-key="AccountTab" style="flex-basis: auto; align-items: center;">
+        <ui:Tab label="Account" name="AccountTab" view-data-key="AccountTab" closeable="false" icon-image="project://database/Packages/com.unity.collab-proxy/Editor/Assets/Images/d_iconemptygravatar.png?fileID=2800000&amp;guid=9aebd705574f9e642aef1e5f59b3e4d8&amp;type=3#d_iconemptygravatar" tabindex="2" style="flex-basis: auto; align-items: center;">
             <ui:VisualElement name="AccountPage" style="flex-grow: 1; width: auto; height: auto;">
                 <ui:VisualElement style="flex-grow: 1;">
                     <ui:GroupBox name="GroupBox" style="flex-direction: row; padding-bottom: 0; margin-top: 2px; margin-bottom: 1px; padding-right: 3px;">

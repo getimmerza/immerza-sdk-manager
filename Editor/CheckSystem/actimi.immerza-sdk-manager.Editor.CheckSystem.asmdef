@@ -1,8 +1,9 @@
 {
-    "name": "ImmerzaSDK.Manager.Editor",
+    "name": "actimi.immerza-sdk-manager.Editor.CheckSystem",
     "rootNamespace": "",
     "references": [
-        "GUID:d8efea17edf20ca48ae145b8ad8330cb"
+        "GUID:d1e67298034945349a21ce60683ad7fa",
+        "GUID:fe685ec1767f73d42b749ea8045bfe43"
     ],
     "includePlatforms": [
         "Editor"
@@ -10,11 +11,11 @@
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
-    "precompiledReferences": [
-        ""
-    ],
+    "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "IMMERZA_SDK_INSTALLED"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

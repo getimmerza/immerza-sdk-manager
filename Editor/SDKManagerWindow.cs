@@ -15,6 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.IO.Compression;
 using UnityEngine.Windows;
+using UnityEditor.Build;
 using UnityEditor.Search;
 using Unity.VisualScripting.YamlDotNet.Core.Tokens;
 
@@ -47,14 +48,14 @@ namespace ImmerzaSDK.Manager.Editor
         [SerializeField]
         private Sprite _logo = null;
 
-#region Auth UI Elements
+        #region Auth UI Elements
         private TextField _emailField = null;
         private TextField _passwordField = null;
         private Label _authMessage = null;
         private Button _signInButton = null;
-#endregion
+        #endregion
 
-#region Main Page UI Elements
+        #region Main Page UI Elements
         private Label _crtVersionField = null;
         private Button _refreshBtn = null;
         private Button _updateBtn = null;
@@ -64,13 +65,23 @@ namespace ImmerzaSDK.Manager.Editor
         private Label _releaseNotes = null;
         #endregion
 
-#region Account Page UI Elements
+        #region Account Page UI Elements
         private Label _userNameLabel = null;
         private Label _userMailLabel = null;
-#endregion
+        #endregion
+
+        #region Status Page UI Elements
+        private GroupBox _errorBox = null;
+        private GroupBox _warningBox = null;
+        private Label _warningCountLabel = null;
+        private Label _errorCountLabel = null;
+        #endregion
 
         private ReleaseInfo _currentReleaseInfo;
         private AuthData _authData;
+
+        private int _errorCount = 0;
+        private int _warningCount = 0;
 
         [MenuItem("Immerza/SDK Manager")]
         public static void ShowWindow()
@@ -127,6 +138,11 @@ namespace ImmerzaSDK.Manager.Editor
             _treeAssetMainPage.CloneTree(rootVisualElement);
             VisualElement mainPageRoot = rootVisualElement.Q<VisualElement>("MainPage");
 
+            _errorBox = mainPageRoot.Q<GroupBox>("ErrorBox");
+            _warningBox = mainPageRoot.Q<GroupBox>("WarningBox");
+            _warningCountLabel = mainPageRoot.Q<Label>("WarningsCount");
+            _errorCountLabel = mainPageRoot.Q<Label>("ErrorsCount");
+
             _crtVersionField = mainPageRoot.Q<Label>("CurrentVersion");
             _releaseNotes = mainPageRoot.Q<Label>("ReleaseNotes");
             _refreshBtn = mainPageRoot.Q<Button>("RefreshButton");
@@ -145,6 +161,11 @@ namespace ImmerzaSDK.Manager.Editor
             _userMailLabel.text = _authData.User.Mail;
 
             _logoutBtn.clicked += Logout;
+
+#if IMMERZA_SDK_INSTALLED
+            PreflightCheckManager.OnLogCheck += HandleNewCheckResults;
+            DispatchChecks();
+#endif
 
             await CheckForNewSdkVersion();
         }
@@ -220,7 +241,7 @@ namespace ImmerzaSDK.Manager.Editor
             if (LoadInstalledVersionInfo(out string installedVersion, out DateTime installedVersionDate))
             {
                 _updateBtn.text = $"Update to {_currentReleaseInfo.Version}";
-                _crtVersionField.text = $"{installedVersion} · {installedVersionDate.ToString("MMMM dd, yyyy")}";
+                _crtVersionField.text = $"{installedVersion} Â· {installedVersionDate.ToString("MMMM dd, yyyy")}";
             }
             else
             {
@@ -325,7 +346,7 @@ namespace ImmerzaSDK.Manager.Editor
             _progressBar.visible = true;
             while (!op.isDone)
             {
-                _progressBar.value = op.progress; 
+                _progressBar.value = op.progress;
                 await Task.Delay(5);
             }
             _progressBar.value = 1.0f;
@@ -350,6 +371,9 @@ namespace ImmerzaSDK.Manager.Editor
             File.Delete(Constants.SDK_BASE_PATH + "SDK.zip");
 
             File.WriteAllText(Constants.SDK_BASE_PATH + "Version.txt", $"{_currentReleaseInfo.Version} {_currentReleaseInfo.Date}");
+
+            PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Android, "IMMERZA_SDK_INSTALLED");
+            PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, "IMMERZA_SDK_INSTALLED");
 
             AssetDatabase.Refresh();
 
@@ -422,11 +446,18 @@ namespace ImmerzaSDK.Manager.Editor
         private void ExtractZipContents(string zipPath, string extractPath)
         {
             using ZipArchive archive = ZipFile.OpenRead(zipPath);
+
+            int topLevelFolders = archive.Entries
+                .Select(e => e.FullName.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault())
+                .Where(f => f != null)
+                .Distinct()
+                .ToList().Count;
+
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
                 string entryPath = entry.FullName;
 
-                string fullPath = Path.Combine(extractPath, entryPath.Substring(entryPath.IndexOf('/') + 1));
+                string fullPath = Path.Combine(extractPath, entryPath.Substring(entryPath.IndexOf('/') + topLevelFolders == 1 ? 1 : 0));
 
                 if (entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\"))
                 {
@@ -439,5 +470,28 @@ namespace ImmerzaSDK.Manager.Editor
                 }
             }
         }
+
+        #if IMMERZA_SDK_INSTALLED
+        private void DispatchChecks()
+        {
+            PreflightCheckManager.RunChecks();
+        }
+
+        private void HandleNewCheckResults(CheckResult res)
+        {
+            if (res.Type == ResultType.Error)
+            {
+                _errorCountLabel.text = Convert.ToString(++_errorCount);
+                Label newMsg = new(res.Message);
+                newMsg.AddToClassList("label-wrap");
+                _errorBox.Add(newMsg);
+            }
+            else if (res.Type == ResultType.Warning)
+            {
+                _warningCountLabel.text = Convert.ToString(++_warningCount);
+                _warningBox.Add(new Label(res.Message));
+            }
+        }
+        #endif
     }
 }
