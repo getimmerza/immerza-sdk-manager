@@ -168,15 +168,15 @@ namespace ImmerzaSDK.Manager.Editor
 
             try
             {
-                JToken refreshToken = response["refreshToken"];
+                JToken refreshToken = response["refreshToken"] ?? response["refresh_token"];
                 if (refreshToken != null)
                     newAuthData.RefreshToken = refreshToken.Value<string>();
 
-                JToken accessToken = response["accessToken"];
+                JToken accessToken = response["accessToken"] ?? response["access_token"];
                 if (accessToken != null)
                     newAuthData.AccessToken = string.Format("Bearer {0}", accessToken.Value<string>());
 
-                JToken expiresIn = response["expiresIn"];
+                JToken expiresIn = response["expiresIn"] ?? response["expires_in"];
                 if (expiresIn != null)
                     newAuthData.ExpiresIn = DateTimeOffset.Now.ToUnixTimeSeconds() + expiresIn.Value<long>() - 20;
             }
