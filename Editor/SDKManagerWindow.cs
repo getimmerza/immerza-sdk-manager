@@ -477,19 +477,22 @@ namespace ImmerzaSDK.Manager.Editor
             PreflightCheckManager.RunChecks();
         }
 
-        private void HandleNewCheckResults(CheckResult res)
+        private void HandleNewCheckResults(List<CheckResult> checkResults)
         {
-            if (res.Type == ResultType.Error)
+            foreach (CheckResult res in checkResults)
             {
-                _errorCountLabel.text = Convert.ToString(++_errorCount);
-                Label newMsg = new(res.Message);
-                newMsg.AddToClassList("label-wrap");
-                _errorBox.Add(newMsg);
-            }
-            else if (res.Type == ResultType.Warning)
-            {
-                _warningCountLabel.text = Convert.ToString(++_warningCount);
-                _warningBox.Add(new Label(res.Message));
+                if (res.Type == ResultType.Error)
+                {
+                    _errorCountLabel.text = Convert.ToString(++_errorCount);
+                    Label newMsg = new(res.Message);
+                    newMsg.AddToClassList("label-wrap");
+                    _errorBox.Add(newMsg);
+                }
+                else if (res.Type == ResultType.Warning)
+                {
+                    _warningCountLabel.text = Convert.ToString(++_warningCount);
+                    _warningBox.Add(new Label(res.Message));
+                }
             }
         }
         #endif

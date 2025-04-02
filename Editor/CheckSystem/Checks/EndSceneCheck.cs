@@ -2,12 +2,10 @@ using ImmerzaSDK.Lua;
 using ImmerzaSDK.Manager.Editor;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using UnityEditor;
-using UnityEngine;
 
 public class EndSceneChecker : ICheckable
 {
-    CheckResult ICheckable.RunCheck()
+    List<CheckResult> ICheckable.RunCheck()
     {
         List<LuaAsset> scripts = CheckUtil.GetLuaAssets();
 
@@ -17,20 +15,27 @@ public class EndSceneChecker : ICheckable
         {
             if (regex.IsMatch(script.content))
             {
-                return new CheckResult()
+                return new List<CheckResult> 
                 {
-                    Type = ResultType.Success,
-                    Message = "EndScene() check succeeded",
-                    ContextObject = null
+                    new()
+                    {
+                        Type = ResultType.Success,
+                        Message = "EndScene() check succeeded",
+                        ContextObject = null
+                    }
                 };
+
             }
         }
 
-        return new CheckResult()
+        return new List<CheckResult> 
         {
-            Type = ResultType.Error,
-            Message = "None of the Lua scripts call EndScene(), which is required before exporting.",
-            ContextObject = null
+            new()
+            {
+                Type = ResultType.Error,
+                Message = "None of the Lua scripts call EndScene(), which is required before exporting.",
+                ContextObject = null
+            }
         };
     }
 }
