@@ -1,5 +1,6 @@
 using ImmerzaSDK.Lua;
 using ImmerzaSDK.Manager.Editor;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,17 +10,20 @@ using static UnityEditor.Experimental.GraphView.GraphView;
 
 public class XRUIInputChecker : ICheckable
 {
-    CheckResult ICheckable.RunCheck()
+    List<CheckResult> ICheckable.RunCheck()
     {
         NearFarInteractor[] found = Object.FindObjectsByType<NearFarInteractor>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         if (found.Length == 0)
         {
-            return new CheckResult()
-            { 
-                Type = ResultType.Error,
-                Message = "No NearFarInteractors found! Scene needs atleast two set to the 'UI' layer.",
-                ContextObject = null
+            return new List<CheckResult>
+            {
+                new()
+                {
+                    Type = ResultType.Error,
+                    Message = "No NearFarInteractors found! Scene needs atleast two set to the 'UI' layer.",
+                    ContextObject = null
+                }
             };
         }
 
@@ -27,11 +31,14 @@ public class XRUIInputChecker : ICheckable
         {
             if ((found[0].interactionLayers.value & (1 << InteractionLayerMask.GetMask("UI"))) == 0)
             {
-                return new CheckResult()
+                return new List<CheckResult>
                 {
-                    Type = ResultType.Error,
-                    Message = "Not one NearFarInteractor with the 'UI' interaction layer has been found! Scene needs atleast two set to the 'UI' layer.",
-                    ContextObject = null
+                    new()
+                    {
+                        Type = ResultType.Error,
+                        Message = "Not one NearFarInteractor with the 'UI' interaction layer has been found! Scene needs atleast two set to the 'UI' layer.",
+                        ContextObject = null
+                    }
                 };
             }
         }
@@ -48,20 +55,26 @@ public class XRUIInputChecker : ICheckable
 
         if (foundInteractors >= 2)
         {
-            return new CheckResult()
+            return new List<CheckResult>
             {
-                Type = ResultType.Success,
-                Message = "XR UI Input check succeeded.",
-                ContextObject = null
+                new()
+                {
+                    Type = ResultType.Success,
+                    Message = "XR UI Input check succeeded.",
+                    ContextObject = null
+                }
             };
         }
         else
         {
-            return new CheckResult()
+            return new List<CheckResult>
             {
-                Type = ResultType.Error,
-                Message = "Only one NearFarInteractor with the 'UI' interaction layer has been found! Scene needs atleast two set to the 'UI' layer.",
-                ContextObject = found[0]
+                new()
+                {
+                    Type = ResultType.Error,
+                    Message = "Only one NearFarInteractor with the 'UI' interaction layer has been found! Scene needs atleast two set to the 'UI' layer.",
+                    ContextObject = found[0]
+                }
             };
         }
     }

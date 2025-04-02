@@ -7,7 +7,7 @@ using UnityEngine;
 
 public class OnPauseRequestedChecker : ICheckable
 {
-    CheckResult ICheckable.RunCheck()
+    List<CheckResult> ICheckable.RunCheck()
     {
         List<LuaAsset> scripts = CheckUtil.GetLuaAssets();
 
@@ -17,20 +17,24 @@ public class OnPauseRequestedChecker : ICheckable
         {
             if (regex.IsMatch(script.content))
             {
-                return new CheckResult()
-                {
-                    Type = ResultType.Success,
-                    Message = "OnPauseRequested check succeeded",
-                    ContextObject = null
+                return new List<CheckResult> {
+                    new()
+                    {
+                        Type = ResultType.Success,
+                        Message = "OnPauseRequested check succeeded",
+                        ContextObject = null
+                    }
                 };
             }
         }
 
-        return new CheckResult()
-        {
-            Type = ResultType.Error,
-            Message = "None of the Lua scripts implement OnPauseRequested, which is required before exporting.",
-            ContextObject = null
+        return new List<CheckResult> {
+            new()
+            {
+                Type = ResultType.Error,
+                Message = "None of the Lua scripts implement OnPauseRequested, which is required before exporting.",
+                ContextObject = null
+            }
         };
     }
 }

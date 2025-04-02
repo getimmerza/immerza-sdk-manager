@@ -1,7 +1,9 @@
+using System.Collections.Generic;
+
 namespace ImmerzaSDK.Manager.Editor
 {
     internal interface ICheckable
     {
-        CheckResult RunCheck();
+        List<CheckResult> RunCheck();
     }
 }
