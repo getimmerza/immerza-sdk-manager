@@ -337,8 +337,6 @@ namespace ImmerzaSDK.Manager.Editor
                 return;
             }
 
-            //SetButton(_updateBtn, false);
-
             using UnityWebRequest req = UnityWebRequest.Get(Constants.API_ROUTE_FILES + _currentReleaseInfo.Url);
             req.SetRequestHeader("Authorization", _authData.AccessToken);
             UnityWebRequestAsyncOperation op = req.SendWebRequest();
@@ -354,7 +352,6 @@ namespace ImmerzaSDK.Manager.Editor
 
             if (req.result != UnityWebRequest.Result.Success)
             {
-                //SetButton(_updateBtn, true);
                 return;
             }
 
@@ -364,13 +361,10 @@ namespace ImmerzaSDK.Manager.Editor
                 dirInfo.Delete(true);
             }
 
-            Directory.CreateDirectory(Constants.SDK_BASE_PATH);
+            ExtractZipContents(req.downloadHandler.data, Constants.SDK_BASE_PATH);
 
-            File.WriteAllBytes(Constants.SDK_BASE_PATH + "SDK.zip", req.downloadHandler.data);
-            ExtractZipContents(Constants.SDK_BASE_PATH + "SDK.zip", Constants.SDK_BASE_PATH);
-            File.Delete(Constants.SDK_BASE_PATH + "SDK.zip");
-
-            File.WriteAllText(Constants.SDK_BASE_PATH + "Version.txt", $"{_currentReleaseInfo.Version} {_currentReleaseInfo.Date}");
+            File.WriteAllText(Path.Combine(Constants.SDK_BASE_PATH, "Version.txt"), $"{_currentReleaseInfo.Version} {_currentReleaseInfo.Date}");
+            File.Copy(Path.Combine(Constants.SDK_BASE_PATH, "XLua", "Gen", "link.xml"), Path.Combine(Application.dataPath, "link.xml"));
 
             PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Android, "IMMERZA_SDK_INSTALLED");
             PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, "IMMERZA_SDK_INSTALLED");
@@ -443,9 +437,15 @@ namespace ImmerzaSDK.Manager.Editor
             return string.Compare(preRelease1, preRelease2, StringComparison.Ordinal);
         }
 
-        private void ExtractZipContents(string zipPath, string extractPath)
+        private void ExtractZipContents(byte[] data, string extractPath)
         {
-            using ZipArchive archive = ZipFile.OpenRead(zipPath);
+            using MemoryStream stream = new MemoryStream(data);
+            using ZipArchive archive = new ZipArchive(stream);
+
+            if (!Directory.Exists(extractPath))
+            {
+                Directory.CreateDirectory(extractPath);
+            }
 
             int topLevelFolders = archive.Entries
                 .Select(e => e.FullName.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault())
