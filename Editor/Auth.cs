@@ -158,9 +158,11 @@ namespace ImmerzaSDK.Manager.Editor
                 {
                     authData.ExpiresIn = tokenExpiresIn;
                 }
+
+                return authData;
             }
 
-            return authData.IsExpired ? InvalidAuthData : authData;
+            return InvalidAuthData;
         }
         private static AuthData createAuthDataFromLoginResponse(JObject response)
         {
