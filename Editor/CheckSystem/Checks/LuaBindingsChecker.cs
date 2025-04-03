@@ -6,14 +6,14 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
+[CheckableAttribute(displayName: "Lua Bindings Check")]
 public class LuaBindingsChecker : ICheckable
 {
-    List<CheckResult> ICheckable.RunCheck()
+    public void RunCheck(CheckContext context)
     {
         HashSet<string> luaBindings = CheckUtil.GetAllLuaBindingNames();
         List<LuaAsset> luaScripts = CheckUtil.GetLuaAssets();
-        List<CheckResult> illegalBindings = new();
-
+        
         Regex typeRegex = new(@"\bCS\.[A-Za-z_][A-Za-z0-9_.]*\b", RegexOptions.Compiled);
 
         foreach (LuaAsset script in luaScripts)
@@ -26,31 +26,9 @@ public class LuaBindingsChecker : ICheckable
 
                 if (!luaBindings.Contains(foundType))
                 {
-                    illegalBindings.Add(new CheckResult()
-                    {
-                        Type = ResultType.Warning,
-                        Message = $"Unknown type found in {script.name}: {foundType}",
-                        ContextObject = script
-                    });
+                    context.AddWarning($"Unknown type found in {script.name}: {foundType}", script);
                 }
             }
-        }
-
-        if (illegalBindings.Count == 0)
-        {
-            return new List<CheckResult>
-            {
-                new()
-                {
-                    Type = ResultType.Success,
-                    Message = "LuaBindingsChecker succeeded.",
-                    ContextObject = null
-                }
-            };
-        }
-        else
-        {
-            return illegalBindings;
         }
     }
 }

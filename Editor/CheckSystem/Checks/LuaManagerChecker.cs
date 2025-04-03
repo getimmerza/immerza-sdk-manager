@@ -4,59 +4,24 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+[CheckableAttribute(displayName: "Lua Manager Check")]
 public class LuaManagerChecker : ICheckable
 {
-    List<CheckResult> ICheckable.RunCheck()
+    public void RunCheck(CheckContext context)
     {
         ImmerzaLuaManager[] found = Object.FindObjectsByType<ImmerzaLuaManager>(FindObjectsInactive.Include, FindObjectsSortMode.None);
 
         if (found.Length == 0)
         {
-            return new List<CheckResult> 
-            {
-                new()
-                {
-                    Type = ResultType.Error,
-                    Message = "ImmerzaLuaManager not found inside scene! Add an empty GameObject to your scene and add the component.",
-                    ContextObject = null
-                }
-            };
+            context.AddError("ImmerzaLuaManager not found inside scene! Add an empty GameObject to your scene and add the component.");
         }
-
-        if (found.Length > 1)
+        else if (found.Length > 1)
         {
-            return new List<CheckResult>
-            {
-                new()
-                {
-                    Type = ResultType.Warning,
-                    Message = $"Multiple ImmerzaLuaManagers found inside scene! Remove the duplicates: {string.Join(", ", found.Select(obj => obj.name))}",
-                    ContextObject = null
-                }
-            };
+            context.AddWarning($"Multiple ImmerzaLuaManagers found inside scene! Remove the duplicates: {string.Join(", ", found.Select(obj => obj.name))}");
         }
-
-        if (!found[0].isActiveAndEnabled)
+        else if (!found[0].isActiveAndEnabled)
         {
-            return new List<CheckResult> 
-            {
-                new()
-                {
-                    Type = ResultType.Warning,
-                    Message = $"ImmerzaLuaManager inactive, consider reactivating it before exporting.",
-                    ContextObject = found[0]
-                }
-            };
+            context.AddWarning($"ImmerzaLuaManager inactive, consider reactivating it before exporting.", found[0]);
         }
-
-        return new List<CheckResult> 
-        {
-            new()
-            {
-                Type = ResultType.Success,
-                Message = "ImmerzaLuaManager check succeeded.",
-                ContextObject = found[0]
-            }
-        };
     }
 }
