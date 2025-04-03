@@ -37,7 +37,7 @@ namespace ImmerzaSDK.Manager.Editor
         public long Date { get; }
     }
 
-    public class SDKManagerWindow : EditorWindow
+    public partial class SDKManagerWindow : EditorWindow
     {
         private static readonly ReleaseInfo InvalidRelease = new ReleaseInfo(string.Empty, "None", string.Empty, 0);
 
@@ -161,6 +161,8 @@ namespace ImmerzaSDK.Manager.Editor
             _userMailLabel.text = _authData.User.Mail;
 
             _logoutBtn.clicked += Logout;
+
+            InitializeDeployView(mainPageRoot.Q<VisualElement>("DeployPage"));
 
 #if IMMERZA_SDK_INSTALLED
             PreflightCheckManager.OnLogCheck += HandleNewCheckResults;
@@ -365,7 +367,7 @@ namespace ImmerzaSDK.Manager.Editor
             ExtractZipContents(req.downloadHandler.data, Constants.SDK_BASE_PATH);
 
             File.WriteAllText(Path.Combine(Constants.SDK_BASE_PATH, "Version.txt"), $"{_currentReleaseInfo.Version} {_currentReleaseInfo.Date}");
-            File.Copy(Path.Combine(Constants.SDK_BASE_PATH, "XLua", "Gen", "link.xml"), Path.Combine(Application.dataPath, "link.xml"));
+            File.Copy(Path.Combine(Constants.SDK_BASE_PATH, "XLua", "Gen", "link.xml"), Path.Combine(Application.dataPath, "link.xml"), true);
 
             PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Android, "IMMERZA_SDK_INSTALLED");
             PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, "IMMERZA_SDK_INSTALLED");
