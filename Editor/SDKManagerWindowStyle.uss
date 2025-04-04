@@ -8,9 +8,20 @@
 .unity-tab-view__header-container {
     width: 100%;
 }
+
 .unity-tab-view__content-container {
     width: 100%;
 }
+
 .unity-tab__header {
     flex-grow: 1;
+}
+
+#ActionLink {
+    color: rgb(255, 92, 92);
+    -unity-font-style: normal;
+}
+
+#ActionLink:hover {
+    color: rgb(255, 172, 172);
 }

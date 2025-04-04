@@ -8,6 +8,8 @@ namespace ImmerzaSDK.Manager.Editor
 {
     public partial class SDKManagerWindow : EditorWindow
     {
+        private const int TAB_INDEX_STATUS = 0;
+
         [SerializeField]
         private VisualTreeAsset _treeAssetMainPage = null;
         [SerializeField]
@@ -31,7 +33,7 @@ namespace ImmerzaSDK.Manager.Editor
             clearVisualRoot();
 
             _treeAssetMainPage.CloneTree(rootVisualElement);
-            VisualElement mainPageRoot = rootVisualElement.Q<VisualElement>("MainPage");
+            TabView mainPageRoot = rootVisualElement.Q<TabView>("MainPage");
 
             List<Task> initializationTasks = new()
             {
@@ -39,7 +41,7 @@ namespace ImmerzaSDK.Manager.Editor
             };
             InitializeStatusView(mainPageRoot.Q<VisualElement>("StatusPage"));
             InitializeAccountView(mainPageRoot.Q<VisualElement>("AccountPage"));
-            InitializeDeployView(mainPageRoot.Q<VisualElement>("DeployPage"));
+            InitializeDeployView(mainPageRoot, mainPageRoot.Q<VisualElement>("DeployPage"));
             await Task.WhenAll(initializationTasks);
         }
 

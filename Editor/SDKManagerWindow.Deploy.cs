@@ -15,11 +15,12 @@ namespace ImmerzaSDK.Manager.Editor
         private Button _pageDeployBtnRefresh;
         private Toggle _pageDeployTglOpenExportFolder;
         private Label _pageDeployLblSuccess;
+        private Label _pageDeployLblAction;
         #endregion
 
         private SceneAsset _sceneToExport;
 
-        private void InitializeDeployView(VisualElement pageRoot)
+        private void InitializeDeployView(TabView parentTabView, VisualElement pageRoot)
         {
             _pageDeployLstScenes = pageRoot.Q<ListView>("SceneList");
             _pageDeployLstScenes.selectionChanged += SceneSelected;
@@ -38,10 +39,22 @@ namespace ImmerzaSDK.Manager.Editor
             _pageDeployTglOpenExportFolder = pageRoot.Q<Toggle>("OpenExportFolder");
 
             _pageDeployLblSuccess = pageRoot.Q<Label>("SuccessLabel");
-            _pageDeployLblSuccess.visible = false;
+
+            _pageDeployLblAction = pageRoot.Q<Label>("ActionLink");
+            _pageDeployLblAction.AddManipulator(new Clickable(x =>
+                parentTabView.selectedTabIndex = TAB_INDEX_STATUS
+             ));
 
             UpdateSceneList();
+            ResetDeployView();
         }
+
+        private void ResetDeployView()
+        {
+            _pageDeployLblAction.visible = false;
+            _pageDeployLblSuccess.visible = false;
+        }
+
         private void UpdateSceneList()
         {
             _pageDeployLstScenes.ClearSelection();
@@ -86,23 +99,33 @@ namespace ImmerzaSDK.Manager.Editor
             if (SDKAPIBridge.SceneBuilder == null)
                 return;
 
-            ExportSettings exportSettings = new ExportSettings
-            {
-                SceneToExport = _sceneToExport,
-                ExportFolder = _pageDeployTxtPath.text
-            };
+            ResetDeployView();
 
-            if (!SDKAPIBridge.SceneBuilder.ExportScene(exportSettings))
+            if (!PreflightCheckManager.RunChecks())
             {
-                SetLabelMsg(_pageDeployLblSuccess, false, "Export failed, please contact support@immerza.de");
+                SetLabelMsg(_pageDeployLblSuccess, false, "Some preflight checks failed. Please check status page for more details");
+                _pageDeployLblAction.visible = true;
             }
             else
             {
-                SetLabelMsg(_pageDeployLblSuccess, true, "Experience exported successfully");
-
-                if (_pageDeployTglOpenExportFolder.value)
+                ExportSettings exportSettings = new ExportSettings
                 {
-                    Process.Start("explorer.exe", exportSettings.ExportFolder);
+                    SceneToExport = _sceneToExport,
+                    ExportFolder = _pageDeployTxtPath.text
+                };
+
+                if (!SDKAPIBridge.SceneBuilder.ExportScene(exportSettings))
+                {
+                    SetLabelMsg(_pageDeployLblSuccess, false, "Export failed, please contact support@immerza.de");
+                }
+                else
+                {
+                    SetLabelMsg(_pageDeployLblSuccess, true, "Experience exported successfully");
+
+                    if (_pageDeployTglOpenExportFolder.value)
+                    {
+                        Process.Start("explorer.exe", exportSettings.ExportFolder);
+                    }
                 }
             }
         }
