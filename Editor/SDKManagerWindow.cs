@@ -3,6 +3,8 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using System.Threading.Tasks;
+using System.Diagnostics;
+using System.IO;
 
 namespace ImmerzaSDK.Manager.Editor
 {
@@ -16,6 +18,11 @@ namespace ImmerzaSDK.Manager.Editor
         private VisualTreeAsset _treeAssetAuthPage = null;
         [SerializeField]
         private Sprite _logo = null;
+
+        #region UI Elements
+        private Button _mainPageBtnOpenLog;
+        private Button _mainPageBtnPreflightChecks;
+        #endregion
 
         [MenuItem("Immerza/SDK Manager")]
         public static void ShowWindow()
@@ -35,7 +42,12 @@ namespace ImmerzaSDK.Manager.Editor
             _treeAssetMainPage.CloneTree(rootVisualElement);
             TabView mainPageRoot = rootVisualElement.Q<TabView>("MainPage");
 
-            List<Task> initializationTasks = new()
+            _mainPageBtnOpenLog = rootVisualElement.Q<Button>("OpenLogButton");
+            _mainPageBtnOpenLog.clicked += _mainPageBtnOpenLog_onClick;
+            _mainPageBtnPreflightChecks = rootVisualElement.Q<Button>("PreflightChecksButton");
+            _mainPageBtnPreflightChecks.clicked += _mainPageBtnPreflightChecks_clicked;
+
+            List <Task> initializationTasks = new()
             {
                 InitializeUpdateView(mainPageRoot.Q<VisualElement>("UpdatePage"))
             };
@@ -43,6 +55,16 @@ namespace ImmerzaSDK.Manager.Editor
             InitializeAccountView(mainPageRoot.Q<VisualElement>("AccountPage"));
             InitializeDeployView(mainPageRoot, mainPageRoot.Q<VisualElement>("DeployPage"));
             await Task.WhenAll(initializationTasks);
+        }
+
+        private void _mainPageBtnPreflightChecks_clicked()
+        {
+            PreflightCheckManager.RunChecks();
+        }
+
+        private void _mainPageBtnOpenLog_onClick()
+        {
+            Process.Start("explorer.exe", Path.GetFullPath(Application.persistentDataPath));
         }
 
         public async void CreateGUI()

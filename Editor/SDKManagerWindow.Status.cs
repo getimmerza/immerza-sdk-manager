@@ -25,15 +25,11 @@ namespace ImmerzaSDK.Manager.Editor
 #if IMMERZA_SDK_INSTALLED
             PreflightCheckManager.OnLogCheck += HandleNewCheckResults;
             PreflightCheckManager.OnBeforeRunChecks += OnBeforeRunChecks;
-            DispatchChecks();
+            PreflightCheckManager.RunChecks();
 #endif
         }
 
 #if IMMERZA_SDK_INSTALLED
-        private void DispatchChecks()
-        {
-            PreflightCheckManager.RunChecks();
-        }
 
         private void HandleNewCheckResults(ResultType type, string message)
         {
