@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEditor;
 using UnityEditor.VersionControl;
 using UnityEngine;
@@ -13,7 +14,7 @@ namespace ImmerzaSDK.Manager.Editor
         public static event Action OnBeforeRunChecks;
         public static event Action<ResultType, string> OnLogCheck;
 
-        public static void RunChecks()
+        public static bool RunChecks()
         {
             List<Type> types = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(s => s.GetTypes())
@@ -22,6 +23,8 @@ namespace ImmerzaSDK.Manager.Editor
             CheckContext checkContext = new CheckContext();
 
             OnBeforeRunChecks?.Invoke();
+
+            bool allChecksSuccessful = true;
 
             foreach (Type crtType in types)
             {
@@ -41,6 +44,9 @@ namespace ImmerzaSDK.Manager.Editor
                 checkContext.Reset();
                 handlerInstance.RunCheck(checkContext);
 
+                if (checkContext.HasErrors)
+                    allChecksSuccessful = false;
+
                 if (checkContext.Results.Count() == 0)
                 {
                     DispatchResult(ResultType.Success, $"{displayName}: succeeded", null);
@@ -53,6 +59,8 @@ namespace ImmerzaSDK.Manager.Editor
                     }
                 }
             }
+
+            return allChecksSuccessful;
         }
 
         private static void DispatchResult(ResultType type, string message, UnityEngine.Object contextObject)
