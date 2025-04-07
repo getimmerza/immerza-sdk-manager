@@ -12,8 +12,10 @@ namespace ImmerzaSDK.Manager.Editor
         private Label _pageStatusLblErrorCount;
         #endregion
 
+#if IMMERZA_SDK_INSTALLED
         private int _errorCount = 0;
         private int _warningCount = 0;
+#endif
 
         private void InitializeStatusView(VisualElement pageRoot)
         {
@@ -30,7 +32,6 @@ namespace ImmerzaSDK.Manager.Editor
         }
 
 #if IMMERZA_SDK_INSTALLED
-
         private void HandleNewCheckResults(ResultType type, string message)
         {
             if (type == ResultType.Error)
