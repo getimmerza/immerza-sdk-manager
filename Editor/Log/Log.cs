@@ -12,8 +12,9 @@ namespace ImmerzaSDK.Manager.Editor
 
     public enum LogChannelType
     {
-        EditorSDK,
-        All
+        SDKManager = 1,
+        SDK        = 2,
+        All        = 0x7fffffff
     }
 
     public struct LogInfo
@@ -82,7 +83,7 @@ namespace ImmerzaSDK.Manager.Editor
         {
             foreach (var logChannel in _logChannels)
             {
-                if (channelType != LogChannelType.All && logChannel.Type != channelType)
+                if ((channelType & logChannel.Type) == 0)
                     continue;
 
                 string formattedMessage = string.Empty; 
@@ -91,7 +92,7 @@ namespace ImmerzaSDK.Manager.Editor
                 {
                     if (logChannel.Flags.HasFlag(LogChannelFlags.Timestamp))
                     {
-                        formattedMessage += $"{DateTime.Now.ToString("[H:m:ss] ")}";
+                        formattedMessage += $"{DateTime.Now.ToString("[H:mm:ss] ")}";
                     }
 
                     if (logChannel.Flags.HasFlag(LogChannelFlags.ChannelType))

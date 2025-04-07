@@ -62,8 +62,9 @@ namespace ImmerzaSDK.Manager.Editor
                         if (long.TryParse(parts[1], out long timestamp))
                             date = DateTimeOffset.FromUnixTimeSeconds(timestamp).DateTime;
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        Log.LogError(e.ToString(), LogChannelType.SDKManager);
                     }
                 }
             }
@@ -73,7 +74,11 @@ namespace ImmerzaSDK.Manager.Editor
 
         private async Awaitable CheckForNewSdkVersion()
         {
+            Log.LogInfo("Checking for SDK updates", LogChannelType.SDKManager);
+
             _currentReleaseInfo = await GetLatestReleaseInfo();
+
+            Log.LogInfo($"Found {_currentReleaseInfo.Version}", LogChannelType.SDKManager);
 
             if (LoadInstalledVersionInfo(out string installedVersion, out DateTime installedVersionDate))
             {
@@ -95,6 +100,7 @@ namespace ImmerzaSDK.Manager.Editor
         {
             if (!await Auth.CheckAuthData(_authData))
             {
+                Log.LogError("Refreshing access token failed...", LogChannelType.SDKManager);
                 return InvalidRelease;
             }
 
@@ -106,6 +112,7 @@ namespace ImmerzaSDK.Manager.Editor
             if (releasesReq.result != UnityWebRequest.Result.Success)
             {
                 SetLabelMsg(_pageUpdateLblSuccess, false, "Network Error, couldn't get releases.");
+                Log.LogError($"Request failed with '{releasesReq.result}': {releasesReq.error}", LogChannelType.SDKManager);
                 return InvalidRelease;
             }
 
@@ -143,8 +150,9 @@ namespace ImmerzaSDK.Manager.Editor
                 releaseInfo = new ReleaseInfo(version, fileId, changelog, dateTimeOffset.ToUnixTimeSeconds());
 
             }
-            catch (ArgumentException)
+            catch (ArgumentException e)
             {
+                Log.LogError($"Malformed response: {e.Message}", LogChannelType.SDKManager);
             }
 
             return releaseInfo;
@@ -154,6 +162,7 @@ namespace ImmerzaSDK.Manager.Editor
         {
             if (!await Auth.CheckAuthData(_authData))
             {
+                Log.LogError("Refreshing access token failed...", LogChannelType.SDKManager);
                 return;
             }
 
@@ -172,17 +181,23 @@ namespace ImmerzaSDK.Manager.Editor
 
             if (req.result != UnityWebRequest.Result.Success)
             {
+                Log.LogError($"Request failed with '{req.result}': {req.error}", LogChannelType.SDKManager);
                 return;
             }
 
+            Log.LogInfo("Installing SDK content...", LogChannelType.SDKManager);
+
             if (Directory.Exists(Constants.SDK_BASE_PATH))
             {
+                Log.LogInfo("\tremoving previous SDK folder", LogChannelType.SDKManager);
                 DirectoryInfo dirInfo = new(Constants.SDK_BASE_PATH);
                 dirInfo.Delete(true);
             }
 
+            Log.LogInfo("\textractng SDK package", LogChannelType.SDKManager);
             ExtractZipContents(req.downloadHandler.data, Constants.SDK_BASE_PATH);
 
+            Log.LogInfo("\tpost setup steps", LogChannelType.SDKManager);
             File.WriteAllText(Path.Combine(Constants.SDK_BASE_PATH, "Version.txt"), $"{_currentReleaseInfo.Version} {_currentReleaseInfo.Date}");
             File.Copy(Path.Combine(Constants.SDK_BASE_PATH, "XLua", "Gen", "link.xml"), Path.Combine(Application.dataPath, "link.xml"), true);
 
@@ -190,6 +205,8 @@ namespace ImmerzaSDK.Manager.Editor
             PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Standalone, "IMMERZA_SDK_INSTALLED");
 
             AssetDatabase.Refresh();
+
+            Log.LogInfo($"SDK updated to {_currentReleaseInfo.Version}", LogChannelType.SDKManager);
 
             await CheckForNewSdkVersion();
         }

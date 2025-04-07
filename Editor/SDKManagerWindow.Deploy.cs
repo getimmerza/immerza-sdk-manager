@@ -96,13 +96,19 @@ namespace ImmerzaSDK.Manager.Editor
 
         private void ExportScene()
         {
+            Log.LogInfo("Export scene...", LogChannelType.SDKManager);
+
             if (SDKAPIBridge.SceneBuilder == null)
+            {
+                Log.LogError("scene builder was not initialized by SDK", LogChannelType.SDKManager);
                 return;
+            }
 
             ResetDeployView();
 
             if (!PreflightCheckManager.RunChecks())
             {
+                Log.LogInfo("...canceled as for runtime checks not passing", LogChannelType.SDKManager);
                 SetLabelMsg(_pageDeployLblSuccess, false, "Some preflight checks failed. Please check status page for more details");
                 _pageDeployLblAction.visible = true;
             }

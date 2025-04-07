@@ -10,7 +10,7 @@ namespace ImmerzaSDK.Manager.Editor
     {
         public LogChannelFlags Flags => LogChannelFlags.JustRawMessag;
 
-        public LogChannelType Type => LogChannelType.EditorSDK;
+        public LogChannelType Type => LogChannelType.SDKManager;
 
         public void Dispatch(LogInfo logInfo)
         {

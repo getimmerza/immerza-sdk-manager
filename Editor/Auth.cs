@@ -44,7 +44,7 @@ namespace ImmerzaSDK.Manager.Editor
                 return (request.downloadHandler.text, true);
             }
 
-            return (string.Empty, false);
+            return (request.error, false);
         }
 
         internal async static Awaitable<(AuthData, string)> SignIn(string email, string password)
@@ -67,7 +67,7 @@ namespace ImmerzaSDK.Manager.Editor
             AuthData newAuthData = createAuthDataFromLoginResponse(resObj);
             if (!await LoadUserData(newAuthData))
             {
-                return (null, string.Empty);
+                return (null, "Failed requesting user data from backend");
             }
 
             storeAuthData(newAuthData);
@@ -85,7 +85,7 @@ namespace ImmerzaSDK.Manager.Editor
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogError(req.downloadHandler.text);
+                    Log.LogError($"Request failed with '{req.result}': {req.error}", LogChannelType.SDKManager);
                     return false;
                 }
 
@@ -101,12 +101,14 @@ namespace ImmerzaSDK.Manager.Editor
         {
             if (!await CheckAuthData(authData))
             {
+                Log.LogError("Refreshing access token failed...", LogChannelType.SDKManager);
                 return false;
             }
 
             (string data, bool success) = await GetRequest(Constants.API_ROUTE_USER_INFO, authData.AccessToken);
             if (!success)
             {
+                Log.LogError($"Request failed with: {data}", LogChannelType.SDKManager);
                 return false;
             }
 
@@ -117,8 +119,9 @@ namespace ImmerzaSDK.Manager.Editor
                 authData.User.Name = result["membership"]["profile"]["display"].Value<string>();
                 authData.User.Mail = result["user"]["email"].Value<string>();
             }
-            catch (ArgumentException)
+            catch (ArgumentException e)
             {
+                Log.LogError($"Malformed response: {e.Message}", LogChannelType.SDKManager);
                 return false;
             }
 
@@ -182,8 +185,9 @@ namespace ImmerzaSDK.Manager.Editor
                 if (expiresIn != null)
                     newAuthData.ExpiresIn = DateTimeOffset.Now.ToUnixTimeSeconds() + expiresIn.Value<long>() - 20;
             }
-            catch (ArgumentException)
+            catch (ArgumentException e)
             {
+                Log.LogError($"Malformed response: {e.Message}", LogChannelType.SDKManager);
                 newAuthData = InvalidAuthData;
             }
 

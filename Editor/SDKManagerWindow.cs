@@ -64,7 +64,7 @@ namespace ImmerzaSDK.Manager.Editor
 
         private void _mainPageBtnOpenLog_onClick()
         {
-            Process.Start("explorer.exe", Path.GetFullPath(Application.persistentDataPath));
+            Process.Start("explorer.exe", Path.Combine(Path.GetFullPath(Application.persistentDataPath), "EditorLog.log"));
         }
 
         public async void CreateGUI()
@@ -77,22 +77,6 @@ namespace ImmerzaSDK.Manager.Editor
             else
             {
                 initializeAuthPage();
-            }
-        }
-
-        private static void SetButton(Button button, bool activate)
-        {
-            if (activate)
-            {
-                button.SetEnabled(true);
-                button.style.backgroundColor = new UnityEngine.Color(0.4f, 0.4f, 0.4f);
-                button.style.color = new UnityEngine.Color(1.0f, 1.0f, 1.0f);
-            }
-            else
-            {
-                button.SetEnabled(false);
-                button.style.backgroundColor = new UnityEngine.Color(0.2f, 0.2f, 0.2f);
-                button.style.color = new UnityEngine.Color(0.3f, 0.3f, 0.3f);
             }
         }
 
