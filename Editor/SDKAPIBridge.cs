@@ -17,6 +17,7 @@ namespace ImmerzaSDK.Manager.Editor
 
         public static void RegisterSceneBuilder(ISceneBuilder sceneBuilder)
         {
+            Log.LogInfo("Scene builder instance registered", LogChannelType.SDKManager);
             SceneBuilder = sceneBuilder;
         }
 
@@ -26,7 +27,7 @@ namespace ImmerzaSDK.Manager.Editor
         }
         private static void HandleAssembleAfterReload()
         {
-            Log.RegisterChannel(new LogChannelFile("EditorLog", LogChannelType.EditorSDK));
+            Log.RegisterChannel(new LogChannelFile("EditorLog", LogChannelType.SDKManager | LogChannelType.SDK));
             Log.RegisterChannel(new LogChannelUnity());
         }
     }

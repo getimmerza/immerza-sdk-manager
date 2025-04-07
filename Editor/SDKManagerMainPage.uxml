@@ -73,7 +73,7 @@
         </ui:Tab>
     </ui:TabView>
     <ui:GroupBox style="bottom: 0; top: auto; position: absolute; right: 0; left: 0; flex-direction: row;">
-        <ui:Button name="OpenLogButton" icon-image="project://database/Assets/ImmerzaSDKManager/Editor/Assets/icons/log.png?fileID=2800000&amp;guid=1d80448598b7d804d9e237bd67ee5946&amp;type=3#log" tooltip="Open log folder" style="padding-top: 3px; padding-right: 3px; padding-bottom: 3px; padding-left: 3px;" />
+        <ui:Button name="OpenLogButton" icon-image="project://database/Assets/ImmerzaSDKManager/Editor/Assets/icons/log.png?fileID=2800000&amp;guid=1d80448598b7d804d9e237bd67ee5946&amp;type=3#log" tooltip="Open logfile" style="padding-top: 3px; padding-right: 3px; padding-bottom: 3px; padding-left: 3px;" />
         <ui:Button name="PreflightChecksButton" icon-image="project://database/Assets/ImmerzaSDKManager/Editor/Assets/icons/preflight_check.png?fileID=2800000&amp;guid=4d2b05f8f4001bd4e8a460e1644d3c18&amp;type=3#preflight_check" tooltip="Refresh preflight check" style="padding-top: 3px; padding-right: 3px; padding-bottom: 3px; padding-left: 3px;" />
     </ui:GroupBox>
 </ui:UXML>

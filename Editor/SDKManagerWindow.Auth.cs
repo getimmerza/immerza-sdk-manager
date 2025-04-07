@@ -53,8 +53,11 @@ namespace ImmerzaSDK.Manager.Editor
 
         private async void HandleSignIn()
         {
+            Log.LogInfo("Sign in to contributer platform", LogChannelType.SDKManager);
+
             if (string.IsNullOrEmpty(_pageAuthTxtEmail.text) || string.IsNullOrEmpty(_pageAuthTxtPassword.text))
             {
+                Log.LogInfo("... failed due to missing credentials", LogChannelType.SDKManager);
                 SetLabelMsg(_pageAuthLblMessage, false, "Please provide both the email address and password to your Immerza account.");
                 return;
             }
@@ -67,6 +70,7 @@ namespace ImmerzaSDK.Manager.Editor
 
             if (_authData == null)
             {
+                Log.LogError($"Sign in failed: {signInMsg}", LogChannelType.SDKManager);
                 SetLabelMsg(_pageAuthLblMessage, false, signInMsg);
                 _pageAuthBtnSignIn.SetEnabled(true);
                 return;

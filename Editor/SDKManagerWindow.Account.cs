@@ -23,6 +23,7 @@ namespace ImmerzaSDK.Manager.Editor
 
         private void Logout()
         {
+            Log.LogInfo("Logout user...", LogChannelType.SDKManager);
             Auth.ClearLogoutData();
             _authData = Auth.InvalidAuthData;
             initializeAuthPage();
