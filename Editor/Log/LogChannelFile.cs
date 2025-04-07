@@ -37,7 +37,7 @@ namespace ImmerzaSDK.Manager.Editor
                 }
             }
 
-            _writer = new StreamWriter(new FileStream(logFileName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None));
+            _writer = new StreamWriter(new FileStream(logFileName, FileMode.Create, FileAccess.Write, FileShare.None));
         }
 
         public void Free() 
