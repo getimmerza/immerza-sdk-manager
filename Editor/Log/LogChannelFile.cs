@@ -26,18 +26,26 @@ namespace ImmerzaSDK.Manager.Editor
             Type = channelType;
 
             string logFileName = Path.Combine(Application.persistentDataPath, $"{name}.log");
+            bool logFileExists = File.Exists(logFileName);
 
-            if(File.Exists(logFileName))
+            FileMode fileMode = logFileExists ? FileMode.Append : FileMode.Create;
+
+            if (!SDKAPIBridge.DomainReload)
             {
-                FileInfo fileInfo = new FileInfo(logFileName);
-                if (fileInfo.Length != 0)
+                if (logFileExists)
                 {
-                    string backupLogFileName = Path.Combine(Application.persistentDataPath, $"{name}-prev.log");
-                    File.Copy(logFileName, backupLogFileName, true);
+                    FileInfo fileInfo = new FileInfo(logFileName);
+                    if (fileInfo.Length != 0)
+                    {
+                        string backupLogFileName = Path.Combine(Application.persistentDataPath, $"{name}-prev.log");
+                        File.Copy(logFileName, backupLogFileName, true);
+                    }
                 }
+
+                fileMode = FileMode.Create;
             }
 
-            _writer = new StreamWriter(new FileStream(logFileName, FileMode.Create, FileAccess.Write, FileShare.Read));
+            _writer = new StreamWriter(new FileStream(logFileName, fileMode, FileAccess.Write, FileShare.Read));
         }
 
         public void Free() 
