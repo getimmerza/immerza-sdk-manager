@@ -59,7 +59,9 @@ namespace ImmerzaSDK.Manager.Editor
 
         private void _mainPageBtnPreflightChecks_clicked()
         {
+#if IMMERZA_SDK_INSTALLED
             PreflightCheckManager.RunChecks();
+#endif
         }
 
         private void _mainPageBtnOpenLog_onClick()

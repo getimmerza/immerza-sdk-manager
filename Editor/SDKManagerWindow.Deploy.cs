@@ -96,6 +96,9 @@ namespace ImmerzaSDK.Manager.Editor
 
         private void ExportScene()
         {
+#if !IMMERZA_SDK_INSTALLED
+            Log.LogError("ImmerzaSDK not installed. Please install the SDK before proceeding", LogChannelType.SDKManager);
+#else
             Log.LogInfo("Export scene...", LogChannelType.SDKManager);
 
             if (SDKAPIBridge.SceneBuilder == null)
@@ -134,6 +137,7 @@ namespace ImmerzaSDK.Manager.Editor
                     }
                 }
             }
+#endif
         }
     }
 }

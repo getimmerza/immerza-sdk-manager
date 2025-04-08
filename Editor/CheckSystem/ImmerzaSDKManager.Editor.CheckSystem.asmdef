@@ -1,5 +1,5 @@
 {
-    "name": "actimi.immerza-sdk-manager.Editor.CheckSystem",
+    "name": "ImmerzaSDK.Manager.Editor.CheckSystem",
     "rootNamespace": "",
     "references": [
         "GUID:d1e67298034945349a21ce60683ad7fa",
@@ -16,6 +16,5 @@
     "defineConstraints": [
         "IMMERZA_SDK_INSTALLED"
     ],
-    "versionDefines": [],
     "noEngineReferences": false
 }
