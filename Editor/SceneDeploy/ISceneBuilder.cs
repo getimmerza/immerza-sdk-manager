@@ -12,6 +12,7 @@ namespace ImmerzaSDK.Manager.Editor
 
     public interface ISceneBuilder
     {
+        public bool PrepareForExport(ExportSettings exportSettings);
         public bool ExportScene(ExportSettings exportSettings);
     }
 }

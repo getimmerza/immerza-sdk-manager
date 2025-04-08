@@ -101,7 +101,9 @@ namespace ImmerzaSDK.Manager.Editor
 #else
             Log.LogInfo("Export scene...", LogChannelType.SDKManager);
 
-            if (SDKAPIBridge.SceneBuilder == null)
+            ISceneBuilder sceneBuilder = SDKAPIBridge.SceneBuilder;
+
+            if (sceneBuilder == null)
             {
                 Log.LogError("scene builder was not initialized by SDK", LogChannelType.SDKManager);
                 return;
@@ -109,33 +111,40 @@ namespace ImmerzaSDK.Manager.Editor
 
             ResetDeployView();
 
-            if (!PreflightCheckManager.RunChecks())
+            ExportSettings exportSettings = new ExportSettings
             {
-                Log.LogInfo("...canceled as for runtime checks not passing", LogChannelType.SDKManager);
-                SetLabelMsg(_pageDeployLblSuccess, false, "Some preflight checks failed. Please check status page for more details");
-                _pageDeployLblAction.visible = true;
-            }
-            else
-            {
-                ExportSettings exportSettings = new ExportSettings
-                {
-                    SceneToExport = _sceneToExport,
-                    ExportFolder = _pageDeployTxtPath.text
-                };
+                SceneToExport = _sceneToExport,
+                ExportFolder = _pageDeployTxtPath.text
+            };
 
-                if (!SDKAPIBridge.SceneBuilder.ExportScene(exportSettings))
+            if (sceneBuilder.PrepareForExport(exportSettings))
+            {
+                if (!PreflightCheckManager.RunChecks())
                 {
-                    SetLabelMsg(_pageDeployLblSuccess, false, "Export failed, please contact support@immerza.de");
+                    Log.LogInfo("...canceled as for runtime checks not passing", LogChannelType.SDKManager);
+                    SetLabelMsg(_pageDeployLblSuccess, false, "Some preflight checks failed. Please check status page for more details");
+                    _pageDeployLblAction.visible = true;
                 }
                 else
                 {
-                    SetLabelMsg(_pageDeployLblSuccess, true, "Experience exported successfully");
-
-                    if (_pageDeployTglOpenExportFolder.value)
+                    if (!SDKAPIBridge.SceneBuilder.ExportScene(exportSettings))
                     {
-                        Process.Start("explorer.exe", exportSettings.ExportFolder);
+                        SetLabelMsg(_pageDeployLblSuccess, false, "Export failed, please contact support@immerza.de");
+                    }
+                    else
+                    {
+                        SetLabelMsg(_pageDeployLblSuccess, true, "Experience exported successfully");
+
+                        if (_pageDeployTglOpenExportFolder.value)
+                        {
+                            Process.Start("explorer.exe", exportSettings.ExportFolder);
+                        }
                     }
                 }
+            }
+            else
+            {
+                Log.LogInfo("...prepare for export failed", LogChannelType.SDKManager);
             }
 #endif
         }
