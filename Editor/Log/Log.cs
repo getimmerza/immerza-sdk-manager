@@ -95,9 +95,11 @@ namespace ImmerzaSDK.Manager.Editor
                         formattedMessage += $"{DateTime.Now.ToString("[H:mm:ss] ")}";
                     }
 
+                    formattedMessage += $"{severity} ";
+
                     if (logChannel.Flags.HasFlag(LogChannelFlags.ChannelType))
                     {
-                        formattedMessage += $"{channelType.ToString().ToUpper()} ";
+                        formattedMessage += $"({channelType.ToString().ToUpper()}) ";
                     }
 
                     formattedMessage += message;
