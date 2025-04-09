@@ -12,6 +12,6 @@ namespace ImmerzaSDK.Manager.Editor
         internal const string API_ROUTE_USER_INFO = API_BASE_URL + "auth/me";
         internal const string CLIENT_ID = "fc86ca24-e854-4c7f-bde1-fd5bb04d9a6d";
 
-        internal const string SDK_BASE_PATH = "Assets/Immerza/";
+        internal const string SDK_BASE_PATH = "Assets\\Immerza\\";
     }
 }

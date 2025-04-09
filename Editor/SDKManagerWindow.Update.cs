@@ -10,12 +10,16 @@ using UnityEngine.UIElements;
 using System.Text.RegularExpressions;
 using System.IO.Compression;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using System.Drawing.Printing;
 
 namespace ImmerzaSDK.Manager.Editor
 {
     public partial class SDKManagerWindow
     {
         private static readonly ReleaseInfo InvalidRelease = new ReleaseInfo(string.Empty, "None", string.Empty, 0);
+
+        private static readonly string[] InstallBlackList = new string[] { "Plugins\\x86_64\\xlua.dll", "Plugins\\x86\\xlua.dll" };
 
         #region UI Elements
         private Label _pageUpdateLblCrtVersion;
@@ -190,12 +194,16 @@ namespace ImmerzaSDK.Manager.Editor
             if (Directory.Exists(Constants.SDK_BASE_PATH))
             {
                 Log.LogInfo("\tremoving previous SDK folder", LogChannelType.SDKManager);
-                DirectoryInfo dirInfo = new(Constants.SDK_BASE_PATH);
-                dirInfo.Delete(true);
+
+                // NOTE: Blacklist native plugin from being deleted as Unity is unable to unload them after binding once.
+                // This is a temporary solution til native plugins can be unloaded by assuming the plugin will not normally
+                // be part of a new update
+                Log.LogWarning("\tskipping xlua native plugins!!!", LogChannelType.SDKManager);
+                DeleteFolderRecursive(Constants.SDK_BASE_PATH, InstallBlackList);
             }
 
             Log.LogInfo("\textractng SDK package", LogChannelType.SDKManager);
-            ExtractZipContents(req.downloadHandler.data, Constants.SDK_BASE_PATH);
+            ExtractZipContents(req.downloadHandler.data, Constants.SDK_BASE_PATH, InstallBlackList);
 
             Log.LogInfo("\tpost setup steps", LogChannelType.SDKManager);
             File.WriteAllText(Path.Combine(Constants.SDK_BASE_PATH, "Version.txt"), $"{_currentReleaseInfo.Version} {_currentReleaseInfo.Date}");
@@ -253,7 +261,7 @@ namespace ImmerzaSDK.Manager.Editor
             return string.Compare(preRelease1, preRelease2, StringComparison.Ordinal);
         }
 
-        private static void ExtractZipContents(byte[] data, string extractPath)
+        private static void ExtractZipContents(byte[] data, string extractPath, string[] installBlackList)
         {
             using MemoryStream stream = new MemoryStream(data);
             using ZipArchive archive = new ZipArchive(stream);
@@ -271,18 +279,79 @@ namespace ImmerzaSDK.Manager.Editor
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                string entryPath = entry.FullName;
+                string entryPath = entry.FullName.Replace('/', '\\');
+                string fullPath = Path.Combine(extractPath, entryPath.Substring(entryPath.IndexOf('\\') + topLevelFolders == 1 ? 1 : 0));
 
-                string fullPath = Path.Combine(extractPath, entryPath.Substring(entryPath.IndexOf('/') + topLevelFolders == 1 ? 1 : 0));
-
-                if (entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\"))
+                if (fullPath.EndsWith("\\"))
                 {
                     Directory.CreateDirectory(fullPath);
                 }
                 else
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
-                    entry.ExtractToFile(fullPath, overwrite: true);
+
+                    string blackListItem = installBlackList.FirstOrDefault(item => fullPath.EndsWith(item));
+                    if (string.IsNullOrEmpty(blackListItem))
+                        entry.ExtractToFile(fullPath, overwrite: true);
+                }
+            }
+        }
+
+        private static void DeleteFolderRecursive(string path, string[] installBlackList)
+        {
+            Stack<DirectoryInfo> directoryList = new();
+            HashSet<string> skipFolders = new();
+
+            directoryList.Push(new DirectoryInfo(path));
+
+            while (directoryList.Count > 0)
+            {
+                DirectoryInfo directoryInfo = directoryList.Pop();
+
+                if (!skipFolders.Contains(directoryInfo.FullName) && directoryInfo.GetDirectories().Length != 0)
+                {
+                    directoryList.Push(directoryInfo);
+
+                    bool hasSubfoldersToProcess = false;
+                    foreach (DirectoryInfo subfolder in directoryInfo.GetDirectories())
+                    {
+                        if (!skipFolders.Contains(subfolder.FullName))
+                        {
+                            directoryList.Push(subfolder);
+                            hasSubfoldersToProcess = true;
+                        }
+                    }
+
+                    if (!hasSubfoldersToProcess)
+                        skipFolders.Add(directoryInfo.FullName);
+                }
+                else
+                {
+                    bool hasBlacklistedItems = false;
+
+                    foreach (FileInfo fileInfo in directoryInfo.GetFiles())
+                    {
+                        string fullPath = Path.Combine(directoryInfo.FullName, fileInfo.Name);
+                        string blackListItem = installBlackList.FirstOrDefault(item => fullPath.EndsWith(item));
+                        if (!string.IsNullOrEmpty(blackListItem))
+                        {
+                            hasBlacklistedItems = true;
+                        }
+                        else
+                        {
+                            File.Delete(fullPath);
+                        }
+                    }
+
+                    if (hasBlacklistedItems)
+                    {
+                        skipFolders.Add(directoryInfo.FullName);
+                    }
+
+                    if (!Directory.EnumerateFileSystemEntries(directoryInfo.FullName).Any())
+                    {
+                        Directory.Delete(directoryInfo.FullName);
+                    }
                 }
             }
         }
