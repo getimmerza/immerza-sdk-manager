@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿    using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace ImmerzaSDK.Manager.Editor
@@ -12,6 +14,8 @@ namespace ImmerzaSDK.Manager.Editor
         private ListView _pageDeployLstScenes;
         private TextField _pageDeployTxtPath;
         private Button _pageDeployBtnExport;
+        private Button _pageDeployBtnRunLocal;
+        private Button _pageDeployBtnUpload;
         private Button _pageDeployBtnRefresh;
         private Toggle _pageDeployTglOpenExportFolder;
         private Label _pageDeployLblSuccess;
@@ -28,10 +32,13 @@ namespace ImmerzaSDK.Manager.Editor
             _pageDeployTxtPath = pageRoot.Q<TextField>("ExportPath");
 
             _pageDeployBtnExport = pageRoot.Q<Button>("ExportButton");
-            _pageDeployBtnExport.SetEnabled(false);
-            _pageDeployBtnExport.style.backgroundColor = new UnityEngine.Color(0.2f, 0.2f, 0.2f);
-            _pageDeployBtnExport.style.color = new UnityEngine.Color(0.3f, 0.3f, 0.3f);
-            _pageDeployBtnExport.clicked += ExportScene;
+            _pageDeployBtnExport.clicked += () => ExportScene();
+
+            _pageDeployBtnRunLocal = pageRoot.Q<Button>("RunLocalButton");
+            _pageDeployBtnRunLocal.clicked += ExportAndRunScene;
+
+            _pageDeployBtnUpload = pageRoot.Q<Button>("UploadButton");
+            _pageDeployBtnUpload.clicked += UploadScene;
 
             _pageDeployBtnRefresh = pageRoot.Q<Button>("RefreshButton");
             _pageDeployBtnRefresh.clicked += UpdateSceneList;
@@ -44,6 +51,9 @@ namespace ImmerzaSDK.Manager.Editor
             _pageDeployLblAction.AddManipulator(new Clickable(x =>
                 parentTabView.selectedTabIndex = TAB_INDEX_STATUS
              ));
+
+            SetButtonEnabled(_pageDeployBtnExport, false);
+            SetButtonEnabled(_pageDeployBtnRunLocal, false);
 
             UpdateSceneList();
             ResetDeployView();
@@ -72,9 +82,8 @@ namespace ImmerzaSDK.Manager.Editor
             _pageDeployLstScenes.bindItem = (item, index) => { (item as Label).text = allScenes[index].name; };
             _pageDeployLstScenes.itemsSource = allScenes;
 
-            _pageDeployBtnExport.SetEnabled(false);
-            _pageDeployBtnExport.style.backgroundColor = new UnityEngine.Color(0.2f, 0.2f, 0.2f);
-            _pageDeployBtnExport.style.color = new UnityEngine.Color(0.3f, 0.3f, 0.3f);
+            SetButtonEnabled(_pageDeployBtnExport, false);
+            SetButtonEnabled(_pageDeployBtnRunLocal, false);
         }
 
         private void SceneSelected(IEnumerable<object> scenes)
@@ -89,15 +98,15 @@ namespace ImmerzaSDK.Manager.Editor
 
             _sceneToExport = scene;
 
-            _pageDeployBtnExport.SetEnabled(true);
-            _pageDeployBtnExport.style.backgroundColor = new UnityEngine.Color(0.4f, 0.4f, 0.4f);
-            _pageDeployBtnExport.style.color = new UnityEngine.Color(1.0f, 1.0f, 1.0f);
+            SetButtonEnabled(_pageDeployBtnExport, true);
+            SetButtonEnabled(_pageDeployBtnRunLocal, true);
         }
 
-        private void ExportScene()
+        private bool ExportScene()
         {
 #if !IMMERZA_SDK_INSTALLED
             Log.LogError("ImmerzaSDK not installed. Please install the SDK before proceeding", LogChannelType.SDKManager);
+            return false;
 #else
             Log.LogInfo("Export scene...", LogChannelType.SDKManager);
 
@@ -106,7 +115,7 @@ namespace ImmerzaSDK.Manager.Editor
             if (sceneBuilder == null)
             {
                 Log.LogError("scene builder was not initialized by SDK", LogChannelType.SDKManager);
-                return;
+                return false;
             }
 
             ResetDeployView();
@@ -116,6 +125,8 @@ namespace ImmerzaSDK.Manager.Editor
                 SceneToExport = _sceneToExport,
                 ExportFolder = _pageDeployTxtPath.text
             };
+
+            bool buildSuccesful = false;
 
             if (sceneBuilder.PrepareForExport(exportSettings))
             {
@@ -133,6 +144,8 @@ namespace ImmerzaSDK.Manager.Editor
                     }
                     else
                     {
+                        buildSuccesful = true;
+
                         SetLabelMsg(_pageDeployLblSuccess, true, "Experience exported successfully");
 
                         if (_pageDeployTglOpenExportFolder.value)
@@ -146,7 +159,94 @@ namespace ImmerzaSDK.Manager.Editor
             {
                 Log.LogInfo("...prepare for export failed", LogChannelType.SDKManager);
             }
+
+            return buildSuccesful;
 #endif
+        }
+
+        private void ExportAndRunScene()
+        {
+            string simulatorPath = string.Empty;
+            if (!SimulatorInstalled(ref simulatorPath))
+            {
+                Log.LogError($"Simulator was not found under in '{simulatorPath}'", LogChannelType.SDKManager);
+                SetLabelMsg(_pageDeployLblSuccess, false, "Simulator was not found. Please install the simulator in <project_directory>\\ImmerzaSimulator");
+                return;
+            }
+
+            bool validBuildFound = false;
+            if (CheckForValidBuild(_pageDeployTxtPath.text))
+            {
+                if (!EditorUtility.DisplayDialog("Run Build", "A build was found in the export folder. Do you want to run this build without exporting again?", "Yes", "No"))
+                {
+                    ExportScene();
+                }
+
+                validBuildFound = CheckForValidBuild(_pageDeployTxtPath.text);
+            }
+
+            if (validBuildFound)
+            {
+                string arguments = $"--load-on-start \"{_pageDeployTxtPath.text}\"";
+                Process.Start(simulatorPath, arguments);
+            }
+            else
+            {
+                Log.LogError($"Failed to run local build, no valid build found in folder {_pageDeployTxtPath.text}", LogChannelType.SDKManager);
+            }
+        }
+        private void UploadScene()
+        {
+            if (!CheckForValidBuild(_pageDeployTxtPath.text))
+            {
+                Log.LogError($"Failed to upload scene, no valid build found in folder {_pageDeployTxtPath.text}", LogChannelType.SDKManager);
+                SetLabelMsg(_pageDeployLblSuccess, false, "The specified build folder doesn't contain a valid build");
+                return;
+            }
+
+            SetLabelMsg(_pageDeployLblSuccess, false, "Not implemented yet");
+        }
+
+        private static void SetButtonEnabled(Button button, bool enabled)
+        {
+            button.SetEnabled(enabled);
+            if (enabled)
+            {
+                button.style.backgroundColor = new UnityEngine.Color(0.4f, 0.4f, 0.4f);
+                button.style.color = new UnityEngine.Color(1.0f, 1.0f, 1.0f);
+            }
+            else
+            {
+                button.style.backgroundColor = new UnityEngine.Color(0.2f, 0.2f, 0.2f);
+                button.style.color = new UnityEngine.Color(0.3f, 0.3f, 0.3f);
+            }
+        }
+
+        private static bool CheckForValidBuild(string buildPath)
+        {
+            string[] buildArtifacts =
+            {
+                "immerza_metadata.json",
+                "immerza_scene_win.bundle",
+                "immerza_scene_android.bundle"
+            };
+
+            foreach (string artifact in buildArtifacts)
+            {
+                if (!File.Exists(Path.Combine(buildPath, artifact)))
+                    return false;
+            }
+            return true;
+        }
+
+        private static bool SimulatorInstalled(ref string path)
+        {
+            path = Path.Combine(Application.dataPath, "../ImmerzaSimulator/Immerza.exe");
+            if (File.Exists(path))
+            {
+                return true;
+            }
+            return false;
         }
     }
 }
