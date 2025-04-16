@@ -115,7 +115,7 @@ namespace ImmerzaSDK.Manager.Editor
 
             if (releasesReq.result != UnityWebRequest.Result.Success)
             {
-                SetLabelMsg(_pageUpdateLblSuccess, false, "Network Error, couldn't get releases.");
+                SetLabelMsg(_pageUpdateLblSuccess, null, false, "Network Error, couldn't get releases.");
                 Log.LogError($"Request failed with '{releasesReq.result}': {releasesReq.error}", LogChannelType.SDKManager);
                 return InvalidRelease;
             }

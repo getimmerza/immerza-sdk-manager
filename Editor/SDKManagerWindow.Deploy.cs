@@ -1,7 +1,10 @@
-﻿    using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -13,6 +16,7 @@ namespace ImmerzaSDK.Manager.Editor
         #region UI Elements
         private ListView _pageDeployLstScenes;
         private TextField _pageDeployTxtPath;
+        private TextField _pageDeployTxtExperienceName;
         private Button _pageDeployBtnExport;
         private Button _pageDeployBtnRunLocal;
         private Button _pageDeployBtnUpload;
@@ -20,6 +24,7 @@ namespace ImmerzaSDK.Manager.Editor
         private Toggle _pageDeployTglOpenExportFolder;
         private Label _pageDeployLblSuccess;
         private Label _pageDeployLblAction;
+        private TabView _pageDeployParenTabView;
         #endregion
 
         private SceneAsset _sceneToExport;
@@ -30,6 +35,7 @@ namespace ImmerzaSDK.Manager.Editor
             _pageDeployLstScenes.selectionChanged += SceneSelected;
 
             _pageDeployTxtPath = pageRoot.Q<TextField>("ExportPath");
+            _pageDeployTxtExperienceName = pageRoot.Q<TextField>("ExperienceName");
 
             _pageDeployBtnExport = pageRoot.Q<Button>("ExportButton");
             _pageDeployBtnExport.clicked += () => ExportScene();
@@ -48,9 +54,8 @@ namespace ImmerzaSDK.Manager.Editor
             _pageDeployLblSuccess = pageRoot.Q<Label>("SuccessLabel");
 
             _pageDeployLblAction = pageRoot.Q<Label>("ActionLink");
-            _pageDeployLblAction.AddManipulator(new Clickable(x =>
-                parentTabView.selectedTabIndex = TAB_INDEX_STATUS
-             ));
+
+            _pageDeployParenTabView = parentTabView;
 
             SetButtonEnabled(_pageDeployBtnExport, false);
             SetButtonEnabled(_pageDeployBtnRunLocal, false);
@@ -133,20 +138,22 @@ namespace ImmerzaSDK.Manager.Editor
                 if (!PreflightCheckManager.RunChecks())
                 {
                     Log.LogInfo("...canceled as for runtime checks not passing", LogChannelType.SDKManager);
-                    SetLabelMsg(_pageDeployLblSuccess, false, "Some preflight checks failed. Please check status page for more details");
+                    SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Some preflight checks failed. Please check status page for more details", "<u>View Status-Page</u>", () => {
+                        _pageDeployParenTabView.selectedTabIndex = TAB_INDEX_STATUS;
+                     });
                     _pageDeployLblAction.visible = true;
                 }
                 else
                 {
                     if (!SDKAPIBridge.SceneBuilder.ExportScene(exportSettings))
                     {
-                        SetLabelMsg(_pageDeployLblSuccess, false, "Export failed, please contact support@immerza.de");
+                        SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Export failed, please contact support@immerza.de");
                     }
                     else
                     {
                         buildSuccesful = true;
 
-                        SetLabelMsg(_pageDeployLblSuccess, true, "Experience exported successfully");
+                        SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, true, "Experience exported successfully");
 
                         if (_pageDeployTglOpenExportFolder.value)
                         {
@@ -170,7 +177,7 @@ namespace ImmerzaSDK.Manager.Editor
             if (!SimulatorInstalled(ref simulatorPath))
             {
                 Log.LogError($"Simulator was not found under in '{simulatorPath}'", LogChannelType.SDKManager);
-                SetLabelMsg(_pageDeployLblSuccess, false, "Simulator was not found. Please install the simulator in <project_directory>\\ImmerzaSimulator");
+                SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Simulator was not found. Please install the simulator in <project_directory>\\ImmerzaSimulator");
                 return;
             }
 
@@ -195,16 +202,96 @@ namespace ImmerzaSDK.Manager.Editor
                 Log.LogError($"Failed to run local build, no valid build found in folder {_pageDeployTxtPath.text}", LogChannelType.SDKManager);
             }
         }
-        private void UploadScene()
+        private static async Task<List<JToken>> LoadSceneData(string sceneName, AuthData authData)
         {
+            string route = Constants.API_ROUTE_ACTIVITY_DEFINITION +
+                           $"?name={sceneName}" +
+                           $"&publisher={authData.User.ResourceType}/{authData.User.Id}";
+
+            var responseText = await Client.Get(route, authData);
+            List<JToken> result = new();
+            try
+            {
+                JObject response = JObject.Parse(responseText);
+                JToken? matches = response.GetValue("entry");
+                if (matches != null)
+                {
+                    foreach (JToken item in matches)
+                    {
+                        result.Add(item["resource"]);
+                    }
+                }
+            }
+            catch (JsonReaderException)
+            {
+            }
+
+            return result;
+        }
+        private async void UploadScene()
+        {
+            if (!await Auth.CheckAuthData(_authData))
+            {
+                Log.LogError("Refreshing access token failed...", LogChannelType.SDKManager);
+                return;
+            } 
+
             if (!CheckForValidBuild(_pageDeployTxtPath.text))
             {
                 Log.LogError($"Failed to upload scene, no valid build found in folder {_pageDeployTxtPath.text}", LogChannelType.SDKManager);
-                SetLabelMsg(_pageDeployLblSuccess, false, "The specified build folder doesn't contain a valid build");
+                SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "The specified build folder doesn't contain a valid build");
                 return;
             }
 
-            SetLabelMsg(_pageDeployLblSuccess, false, "Not implemented yet");
+            List<JToken> sceneDataList = null;
+             
+            if (!string.IsNullOrEmpty(_pageDeployTxtExperienceName.text))
+            {
+                sceneDataList = await LoadSceneData(_pageDeployTxtExperienceName.text, _authData);
+            }
+            if (sceneDataList.Count == 0)
+            {
+                Log.LogError($"Failed to upload scene, no name for experience specified", LogChannelType.SDKManager);
+                SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Please specify a valid name for the experience to upload to. If no experience exists, make sure to create an experience on the contributor page.", "<u>https://yourworld.immerza.com/</u>", () => {
+                    Process.Start("explorer", "https://yourworld.immerza.com/");
+                });
+                return;
+            }
+            else if (sceneDataList.Count > 1)
+            {
+                Log.LogError($"Failed to upload scene, multiple scenes with the same name where found", LogChannelType.SDKManager);
+                SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Multiple experiences with the same name where found. Please check the experiences with the contributor page.", "<u>https://yourworld.immerza.com/</u>", () => {
+                    Process.Start("explorer", "https://yourworld.immerza.com/");
+                });
+                return;
+            }
+
+            JToken sceneData = sceneDataList[0];
+
+            // FIXME: upload bundle files
+            string newCatalogUrl = "";
+
+            foreach (JToken artifact in sceneData["relatedArtifact"])
+            {
+                if (artifact["type"].Value<string>() == "json")
+                {
+                    JProperty url = artifact["url"].Parent as JProperty;
+                    //url.Value = newCatalogUrl;
+                    break;
+                }
+            }
+
+            string route = Constants.API_ROUTE_ACTIVITY_DEFINITION + $"/{sceneData["id"]}";
+            string response = await Client.Put(route, sceneData.ToString(), _authData);
+            if (string.IsNullOrEmpty(response))
+            {
+                Log.LogError($"Failed to upload scene, updating scene definition failed", LogChannelType.SDKManager);
+                SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Failed to upload the scene");
+            }
+            else
+            {
+                SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, true, "Scene export uploaded successfully");
+            }
         }
 
         private static void SetButtonEnabled(Button button, bool enabled)

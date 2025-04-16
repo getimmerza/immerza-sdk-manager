@@ -64,6 +64,7 @@
                 <ui:GroupBox style="margin-left: 4px;">
                     <ui:Label tabindex="-1" text="Export Settings:" parse-escape-sequences="true" display-tooltip-when-elided="true" name="ExportLabel" view-data-key="ExportLabel" style="-unity-font-style: bold;" />
                     <ui:TextField picking-mode="Ignore" label="Export path:" value="ImmerzaBundles" password="false" readonly="false" is-delayed="false" hide-mobile-input="false" auto-correction="false" multiline="false" name="ExportPath" view-data-key="ExportPath" tooltip="Path to where the bundle will be exported" />
+                    <ui:TextField picking-mode="Ignore" label="Experience Name:" password="false" readonly="false" is-delayed="false" hide-mobile-input="false" auto-correction="false" multiline="false" name="ExperienceName" tooltip="Path to where the bundle will be exported" />
                     <ui:Toggle label="Open Folder After Export" name="OpenExportFolder" view-data-key="OpenExportFolder" />
                 </ui:GroupBox>
                 <ui:GroupBox style="flex-direction: row;">

@@ -5,6 +5,7 @@ using UnityEngine.UIElements;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.IO;
+using System;
 
 namespace ImmerzaSDK.Manager.Editor
 {
@@ -82,7 +83,12 @@ namespace ImmerzaSDK.Manager.Editor
             }
         }
 
-        private static void SetLabelMsg(Label label, bool success, string message)
+        private static void SetLabelMsg(Label label, Label labelAction, bool success, string message)
+        {
+            SetLabelMsg(label, labelAction, success, message, string.Empty, null);
+        }
+
+        private static void SetLabelMsg(Label label, Label labelAction, bool success, string message, string actionMessage, Action action)
         {
             label.visible = true;
             if (success)
@@ -95,6 +101,17 @@ namespace ImmerzaSDK.Manager.Editor
             }
 
             label.text = message;
+
+            if (!string.IsNullOrEmpty(actionMessage))
+            {
+                labelAction.visible = true;
+                labelAction.text = actionMessage;
+                labelAction.AddManipulator(new Clickable(action));
+            }
+            else
+            {
+                labelAction.visible = false;
+            }
         }
     }
 }
