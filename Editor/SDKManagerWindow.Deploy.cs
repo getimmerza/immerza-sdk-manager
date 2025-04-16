@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.UIElements;
 
 namespace ImmerzaSDK.Manager.Editor
@@ -48,7 +50,17 @@ namespace ImmerzaSDK.Manager.Editor
             _pageDeployBtnRunLocal.clicked += ExportAndRunScene;
 
             _pageDeployBtnUpload = pageRoot.Q<Button>("UploadButton");
-            _pageDeployBtnUpload.clicked += UploadScene;
+            _pageDeployBtnUpload.clicked += () => {
+                try
+                {
+                    _pageDeployBtnUpload.SetEnabled(false);
+                    UploadScene();
+                }
+                finally
+                {
+                    _pageDeployBtnUpload.SetEnabled(true);
+                }
+            };
 
             _pageDeployBtnRefresh = pageRoot.Q<Button>("RefreshButton");
             _pageDeployBtnRefresh.clicked += UpdateSceneList;
@@ -209,7 +221,7 @@ namespace ImmerzaSDK.Manager.Editor
         private static async Task<List<JToken>> LoadSceneData(string sceneName, AuthData authData)
         {
             string route = Constants.API_ROUTE_ACTIVITY_DEFINITION +
-                           $"?name={sceneName}" +
+                           $"?name:exact={sceneName}" +
                            $"&publisher={authData.User.ResourceType}/{authData.User.Id}";
 
             var responseText = await Client.Get(route, authData);
@@ -233,46 +245,92 @@ namespace ImmerzaSDK.Manager.Editor
             return result;
         }
 
-        private static async Task<string> UploadFile(string filename)
+        private static async Task<string> UploadFile(string exportPath, string filename, string contentMimeType, AuthData authData)
         {
-            await Task.Delay(0);
+            string responseText = await Client.Post(Constants.API_ROUTE_FILES, new Dictionary<string, string> {
+                { "contentType", contentMimeType },
+                { "fileName", Path.GetFileName(filename) }
+            }, authData);
 
-            // FIXME implement
+            if (string.IsNullOrEmpty(responseText))
+            {
+                return string.Empty;
+            }
 
-            return filename;
+            JObject response = JObject.Parse(responseText);
+
+            string bucketUrl = response["uploadOptions"]["url"].Value<string>();
+            WWWForm data = new();
+            foreach (JToken item in response["uploadOptions"]["fields"])
+            {
+                JProperty property = item as JProperty;
+                if (property != null)
+                    data.AddField(property.Name, property.Value.ToString());
+            }
+
+            data.AddBinaryData("file", File.ReadAllBytes(Path.Combine(exportPath, filename)));
+
+            string fileId = string.Empty;
+            using (UnityWebRequest uploadRequest = UnityWebRequest.Post(bucketUrl, data))
+            {
+                await uploadRequest.SendWebRequest();
+                if (uploadRequest.result == UnityWebRequest.Result.Success)
+                {
+                    fileId = response["id"].Value<string>();
+                }
+            }
+
+            return fileId;
         }
 
-        private static async Task<string> UploadBundles(string exportPath)
+        private static async Task<string> UploadBundles(string exportPath, AuthData authData)
         {
             const int WindowsBundleTaskIndex = 0;
             const int AndroidBundleTaskIndex = 1;
 
             Task<string>[] uploadTasks = new Task<string>[2];
-            uploadTasks[WindowsBundleTaskIndex] = UploadFile(Path.Combine(exportPath, BUILD_ARTIFACT_BUNDLE_WIN));
-            uploadTasks[AndroidBundleTaskIndex] = UploadFile(Path.Combine(exportPath, BUILD_ARTIFACT_BUNDLE_ANDROID));
+            uploadTasks[WindowsBundleTaskIndex] = UploadFile(exportPath, BUILD_ARTIFACT_BUNDLE_WIN, string.Empty, authData);
+            uploadTasks[AndroidBundleTaskIndex] = UploadFile(exportPath, BUILD_ARTIFACT_BUNDLE_ANDROID, string.Empty, authData);
 
             string metadata = File.ReadAllText(Path.Combine(exportPath, BUILD_ARTIFACT_METADATA));
             JObject catalog = JObject.Parse(metadata);
+            bool uploadSuccessful = true;
             foreach (JToken platform in catalog["platforms"])
             {
                 string platformId = platform["platform_id"].Value<string>();
+                string url = string.Empty;
                 if (platformId == "win")
                 {
-                    (platform["file_id"].Parent as JProperty).Value = await uploadTasks[WindowsBundleTaskIndex];
+                    url = await uploadTasks[WindowsBundleTaskIndex];
                 }
                 else if (platformId == "android")
                 {
-                    (platform["file_id"].Parent as JProperty).Value = await uploadTasks[AndroidBundleTaskIndex];
+                    url = await uploadTasks[AndroidBundleTaskIndex];
                 }
                 else
                 {
                     Log.LogWarning($"found unknown platform id in scene metadata {platformId}", LogChannelType.SDKManager);
                 }
+
+                if (!string.IsNullOrEmpty(url))
+                {
+                    (platform["file_id"].Parent as JProperty).Value = url;
+                }
+                else
+                {
+                    Log.LogError($"upload failed for {platformId}", LogChannelType.SDKManager);
+                    uploadSuccessful = false;
+                    break;
+                }
             }
 
-            File.WriteAllText(Path.Combine(exportPath, BUILD_ARTIFACT_METADATA), catalog.ToString());
-            string catalogUrl = await UploadFile(Path.Combine(exportPath, BUILD_ARTIFACT_METADATA));
-            return catalogUrl;
+            if (uploadSuccessful)
+            {
+                File.WriteAllText(Path.Combine(exportPath, BUILD_ARTIFACT_METADATA), catalog.ToString());
+                return await UploadFile(exportPath, BUILD_ARTIFACT_METADATA, "application/json", authData);
+            }
+
+            return string.Empty;
         }
 
         private async void UploadScene()
@@ -281,9 +339,20 @@ namespace ImmerzaSDK.Manager.Editor
             {
                 Log.LogError("Refreshing access token failed...", LogChannelType.SDKManager);
                 return;
-            } 
+            }
 
-            if (!CheckForValidBuild(_pageDeployTxtPath.text))
+            bool validBuildFound = false;
+            if (CheckForValidBuild(_pageDeployTxtPath.text))
+            {
+                if (!EditorUtility.DisplayDialog("Run Build", "A build was found in the export folder. Do you want to upload this build without exporting again?", "Yes", "No"))
+                {
+                    ExportScene();
+                }
+
+                validBuildFound = CheckForValidBuild(_pageDeployTxtPath.text);
+            }
+
+            if (!validBuildFound)
             {
                 Log.LogError($"Failed to upload scene, no valid build found in folder {_pageDeployTxtPath.text}", LogChannelType.SDKManager);
                 SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "The specified build folder doesn't contain a valid build");
@@ -296,7 +365,7 @@ namespace ImmerzaSDK.Manager.Editor
             {
                 sceneDataList = await LoadSceneData(_pageDeployTxtExperienceName.text, _authData);
             }
-            if (sceneDataList.Count == 0)
+            if (sceneDataList == null || sceneDataList.Count == 0)
             {
                 Log.LogError($"Failed to upload scene, no name for experience specified", LogChannelType.SDKManager);
                 SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Please specify a valid name for the experience to upload to. If no experience exists, make sure to create an experience on the contributor page.", "<u>https://yourworld.immerza.com/</u>", () => {
@@ -313,23 +382,27 @@ namespace ImmerzaSDK.Manager.Editor
                 return;
             }
 
-            string newCatalogUrl = await UploadBundles(_pageDeployTxtPath.text);
+            string newCatalogUrl = await UploadBundles(_pageDeployTxtPath.text, _authData);
 
-#if ENABLE_UPDATE
-            JToken sceneData = sceneDataList[0];
-            foreach (JToken artifact in sceneData["relatedArtifact"])
+            string catalogUpdateResponse = string.Empty;
+            if (!string.IsNullOrEmpty(newCatalogUrl))
             {
-                if (artifact["type"].Value<string>() == "json")
+                JToken sceneData = sceneDataList[0];
+                foreach (JToken artifact in sceneData["relatedArtifact"])
                 {
-                    JProperty url = artifact["url"].Parent as JProperty;
-                    url.Value = newCatalogUrl;
-                    break;
+                    if (artifact["type"].Value<string>() == "json")
+                    {
+                        JProperty url = artifact["url"].Parent as JProperty;
+                        url.Value = newCatalogUrl;
+                        break;
+                    }
                 }
+
+                string route = Constants.API_ROUTE_ACTIVITY_DEFINITION + $"/{sceneData["id"]}";
+                catalogUpdateResponse = await Client.Put(route, sceneData.ToString(), _authData);
             }
 
-            string route = Constants.API_ROUTE_ACTIVITY_DEFINITION + $"/{sceneData["id"]}";
-            string response = await Client.Put(route, sceneData.ToString(), _authData);
-            if (string.IsNullOrEmpty(response))
+            if (string.IsNullOrEmpty(catalogUpdateResponse))
             {
                 Log.LogError($"Failed to upload scene, updating scene definition failed", LogChannelType.SDKManager);
                 SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, false, "Failed to upload the scene");
@@ -338,7 +411,6 @@ namespace ImmerzaSDK.Manager.Editor
             {
                 SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, true, "Scene export uploaded successfully");
             }
-#endif
         }
 
         private static void SetButtonEnabled(Button button, bool enabled)

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
 using UnityEngine;
+using Newtonsoft.Json;
 
 namespace ImmerzaSDK.Manager.Editor
 {
@@ -23,7 +24,8 @@ namespace ImmerzaSDK.Manager.Editor
 
         internal static async Task<string> Post(string uri, Dictionary<string, string> data, AuthData authData)
         {
-            return await SendRequest(UnityWebRequest.Post(uri, data), authData);
+            string payload = JsonConvert.SerializeObject(data);
+            return await SendRequest(UnityWebRequest.Post(uri, payload, "application/json"), authData);
         }
 
         private static async Task<string> SendRequest(UnityWebRequest request, AuthData authData)
