@@ -27,6 +27,10 @@ namespace ImmerzaSDK.Manager.Editor
         private TabView _pageDeployParenTabView;
         #endregion
 
+        static readonly string BUILD_ARTIFACT_BUNDLE_WIN = "immerza_scene_win.bundle";
+        static readonly string BUILD_ARTIFACT_BUNDLE_ANDROID = "immerza_scene_android.bundle";
+        static readonly string BUILD_ARTIFACT_METADATA = "immerza_metadata.json";
+
         private SceneAsset _sceneToExport;
 
         private void InitializeDeployView(TabView parentTabView, VisualElement pageRoot)
@@ -213,7 +217,7 @@ namespace ImmerzaSDK.Manager.Editor
             try
             {
                 JObject response = JObject.Parse(responseText);
-                JToken? matches = response.GetValue("entry");
+                JToken matches = response.GetValue("entry");
                 if (matches != null)
                 {
                     foreach (JToken item in matches)
@@ -228,6 +232,49 @@ namespace ImmerzaSDK.Manager.Editor
 
             return result;
         }
+
+        private static async Task<string> UploadFile(string filename)
+        {
+            await Task.Delay(0);
+
+            // FIXME implement
+
+            return filename;
+        }
+
+        private static async Task<string> UploadBundles(string exportPath)
+        {
+            const int WindowsBundleTaskIndex = 0;
+            const int AndroidBundleTaskIndex = 1;
+
+            Task<string>[] uploadTasks = new Task<string>[2];
+            uploadTasks[WindowsBundleTaskIndex] = UploadFile(Path.Combine(exportPath, BUILD_ARTIFACT_BUNDLE_WIN));
+            uploadTasks[AndroidBundleTaskIndex] = UploadFile(Path.Combine(exportPath, BUILD_ARTIFACT_BUNDLE_ANDROID));
+
+            string metadata = File.ReadAllText(Path.Combine(exportPath, BUILD_ARTIFACT_METADATA));
+            JObject catalog = JObject.Parse(metadata);
+            foreach (JToken platform in catalog["platforms"])
+            {
+                string platformId = platform["platform_id"].Value<string>();
+                if (platformId == "win")
+                {
+                    (platform["file_id"].Parent as JProperty).Value = await uploadTasks[WindowsBundleTaskIndex];
+                }
+                else if (platformId == "android")
+                {
+                    (platform["file_id"].Parent as JProperty).Value = await uploadTasks[AndroidBundleTaskIndex];
+                }
+                else
+                {
+                    Log.LogWarning($"found unknown platform id in scene metadata {platformId}", LogChannelType.SDKManager);
+                }
+            }
+
+            File.WriteAllText(Path.Combine(exportPath, BUILD_ARTIFACT_METADATA), catalog.ToString());
+            string catalogUrl = await UploadFile(Path.Combine(exportPath, BUILD_ARTIFACT_METADATA));
+            return catalogUrl;
+        }
+
         private async void UploadScene()
         {
             if (!await Auth.CheckAuthData(_authData))
@@ -266,17 +313,16 @@ namespace ImmerzaSDK.Manager.Editor
                 return;
             }
 
+            string newCatalogUrl = await UploadBundles(_pageDeployTxtPath.text);
+
+#if ENABLE_UPDATE
             JToken sceneData = sceneDataList[0];
-
-            // FIXME: upload bundle files
-            string newCatalogUrl = "";
-
             foreach (JToken artifact in sceneData["relatedArtifact"])
             {
                 if (artifact["type"].Value<string>() == "json")
                 {
                     JProperty url = artifact["url"].Parent as JProperty;
-                    //url.Value = newCatalogUrl;
+                    url.Value = newCatalogUrl;
                     break;
                 }
             }
@@ -292,6 +338,7 @@ namespace ImmerzaSDK.Manager.Editor
             {
                 SetLabelMsg(_pageDeployLblSuccess, _pageDeployLblAction, true, "Scene export uploaded successfully");
             }
+#endif
         }
 
         private static void SetButtonEnabled(Button button, bool enabled)
@@ -311,14 +358,7 @@ namespace ImmerzaSDK.Manager.Editor
 
         private static bool CheckForValidBuild(string buildPath)
         {
-            string[] buildArtifacts =
-            {
-                "immerza_metadata.json",
-                "immerza_scene_win.bundle",
-                "immerza_scene_android.bundle"
-            };
-
-            foreach (string artifact in buildArtifacts)
+            foreach (string artifact in new string[]{ BUILD_ARTIFACT_BUNDLE_WIN, BUILD_ARTIFACT_BUNDLE_ANDROID, BUILD_ARTIFACT_METADATA })
             {
                 if (!File.Exists(Path.Combine(buildPath, artifact)))
                     return false;
