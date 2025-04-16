@@ -12,6 +12,8 @@ namespace ImmerzaSDK.Manager.Editor
 {
     internal class User
     {
+        public string Id { get; set; }
+        public string ResourceType { get; set; }
         public string Name { get; set; }
         public string Mail { get; set; }
     }
@@ -115,9 +117,13 @@ namespace ImmerzaSDK.Manager.Editor
             try
             {
                 JObject result = JObject.Parse(data);
-                authData.User = new User();
-                authData.User.Name = result["membership"]["profile"]["display"].Value<string>();
-                authData.User.Mail = result["user"]["email"].Value<string>();
+                authData.User = new User
+                {
+                    Id = result["profile"]["id"].Value<string>(),
+                    ResourceType = result["profile"]["resourceType"].Value<string>(),
+                    Name = result["membership"]["profile"]["display"].Value<string>(),
+                    Mail = result["user"]["email"].Value<string>()
+                };
             }
             catch (ArgumentException e)
             {
