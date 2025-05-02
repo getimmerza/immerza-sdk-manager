@@ -21,7 +21,7 @@ public class XRUIInputChecker : ICheckable
         }
         else if (found.Length == 1)
         {
-            if ((found[0].interactionLayers.value & (1 << InteractionLayerMask.GetMask("UI"))) == 0)
+            if ((found[0].interactionLayers.value & InteractionLayerMask.GetMask("UI")) == 0)
             {
                 context.AddError("Not one NearFarInteractor with the 'UI' interaction layer has been found! Scene needs atleast two set to the 'UI' layer.");
             }
@@ -32,7 +32,7 @@ public class XRUIInputChecker : ICheckable
 
             foreach (NearFarInteractor interactor in found)
             {
-                if ((interactor.interactionLayers.value & (1 << InteractionLayerMask.GetMask("UI"))) != 0)
+                if ((interactor.interactionLayers.value & InteractionLayerMask.GetMask("UI")) != 0)
                 {
                     foundInteractors++;
                 }
