@@ -87,7 +87,7 @@ namespace ImmerzaSDK.Manager.Editor
             if (LoadInstalledVersionInfo(out string installedVersion, out DateTime installedVersionDate))
             {
                 _pageUpdateBtnUpdate.text = $"Update to {_currentReleaseInfo.Version}";
-                _pageUpdateLblCrtVersion.text = $"{installedVersion} · {installedVersionDate.ToString("MMMM dd, yyyy")}";
+                _pageUpdateLblCrtVersion.text = $"{installedVersion} · {installedVersionDate:MMMM dd, yyyy}";
             }
             else
             {
@@ -202,7 +202,7 @@ namespace ImmerzaSDK.Manager.Editor
                 DeleteFolderRecursive(Constants.SDK_BASE_PATH, InstallBlackList);
             }
 
-            Log.LogInfo("\textractng SDK package", LogChannelType.SDKManager);
+            Log.LogInfo("\textracting SDK package", LogChannelType.SDKManager);
             ExtractZipContents(req.downloadHandler.data, Constants.SDK_BASE_PATH, InstallBlackList);
 
             Log.LogInfo("\tpost setup steps", LogChannelType.SDKManager);
@@ -291,7 +291,7 @@ namespace ImmerzaSDK.Manager.Editor
                     Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
 
                     string blackListItem = installBlackList.FirstOrDefault(item => fullPath.EndsWith(item));
-                    if (string.IsNullOrEmpty(blackListItem))
+                    if (string.IsNullOrEmpty(blackListItem) || !File.Exists(fullPath))
                         entry.ExtractToFile(fullPath, overwrite: true);
                 }
             }
