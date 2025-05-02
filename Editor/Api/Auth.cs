@@ -1,5 +1,6 @@
 using Newtonsoft.Json.Linq;
 using System;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using UnityEditor;
@@ -87,7 +88,7 @@ namespace ImmerzaSDK.Manager.Editor
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Log.LogError($"Request failed with '{req.result}': {req.error}", LogChannelType.SDKManager);
+                    Log.LogError($"Request failed with '{req.result}': {req.downloadHandler.text}", LogChannelType.SDKManager);
                     return false;
                 }
 
@@ -119,10 +120,10 @@ namespace ImmerzaSDK.Manager.Editor
                 JObject result = JObject.Parse(data);
                 authData.User = new User
                 {
-                    Id = result["profile"]["id"].Value<string>(),
-                    ResourceType = result["profile"]["resourceType"].Value<string>(),
-                    Name = result["membership"]["profile"]["display"].Value<string>(),
-                    Mail = result["user"]["email"].Value<string>()
+                    Id = (string)result["profile"]["id"],
+                    ResourceType = (string)result["profile"]["resourceType"],
+                    Name = (string)result["profile"]["name"][0]["given"][0] + " " + (string)result["profile"]["name"][0]["family"],
+                    Mail = (string)result["user"]["email"]
                 };
             }
             catch (ArgumentException e)
