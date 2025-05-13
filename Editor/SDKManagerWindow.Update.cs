@@ -105,6 +105,9 @@ namespace ImmerzaSDK.Manager.Editor
             if (!await Auth.CheckAuthData(_authData))
             {
                 Log.LogError("Refreshing access token failed...", LogChannelType.SDKManager);
+                Auth.ClearLogoutData();
+                _authData = Auth.InvalidAuthData;
+                initializeAuthPage();
                 return InvalidRelease;
             }
 
