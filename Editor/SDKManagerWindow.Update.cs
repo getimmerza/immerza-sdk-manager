@@ -153,7 +153,8 @@ namespace ImmerzaSDK.Manager.Editor
                 }
 
                 JToken versionInfoLastUpdate = firstEntry["resource"]["meta"]["lastUpdated"];
-                DateTimeOffset dateTimeOffset = DateTimeOffset.Parse(versionInfoLastUpdate.Value<string>() ?? string.Empty);
+                string dateString = versionInfoLastUpdate.Value<string>() ?? string.Empty;
+                DateTimeOffset dateTimeOffset = DateTimeOffset.Parse(dateString, CultureInfo.InvariantCulture);
                 releaseInfo = new ReleaseInfo(version, fileId, changelog, dateTimeOffset.ToUnixTimeSeconds());
 
             }
