@@ -8,7 +8,7 @@ namespace ImmerzaSDK.Manager.Editor
 {
     internal class LogChannelUnity : ILogChannel
     {
-        public LogChannelFlags Flags => LogChannelFlags.JustRawMessag;
+        public LogChannelFlags Flags => LogChannelFlags.RawMessage;
 
         public LogChannelType Type => LogChannelType.SDKManager;
 
