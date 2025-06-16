@@ -67,13 +67,13 @@ namespace ImmerzaSDK.Manager.Editor
                 return (null, (string)resObj["message"]);
             }
 
-            AuthData newAuthData = createAuthDataFromLoginResponse(resObj);
+            AuthData newAuthData = CreateAuthDataFromLoginResponse(resObj);
             if (!await LoadUserData(newAuthData))
             {
                 return (null, "Failed requesting user data from backend");
             }
 
-            storeAuthData(newAuthData);
+            StoreAuthData(newAuthData);
 
             return (newAuthData, "Sign in successful!");
         }
@@ -94,8 +94,8 @@ namespace ImmerzaSDK.Manager.Editor
                 }
 
                 JObject resObj = JObject.Parse(req.downloadHandler.text);
-                authData = createAuthDataFromLoginResponse(resObj);
-                storeAuthData(authData);
+                authData = CreateAuthDataFromLoginResponse(resObj);
+                StoreAuthData(authData);
             }
 
             return true;
@@ -138,7 +138,7 @@ namespace ImmerzaSDK.Manager.Editor
 
         internal async static Awaitable<AuthData> Setup()
         {
-            AuthData authData = loadAuthData();
+            AuthData authData = LoadAuthData();
             if (await LoadUserData(authData))
             {
                 return authData;
@@ -148,34 +148,34 @@ namespace ImmerzaSDK.Manager.Editor
 
         internal static void ClearLogoutData()
         {
-            storeAuthData(InvalidAuthData);
+            StoreAuthData(InvalidAuthData);
         }
 
-        private static void storeAuthData(AuthData authData)
+        private static void StoreAuthData(AuthData authData)
         {
-            EditorPrefs.SetString(KEY_ACCESS_TOKEN, authData.AccessToken);
-            EditorPrefs.SetString(KEY_REFRESH_TOKEN, authData.RefreshToken);
-            EditorPrefs.SetString(KEY_TOKEN_EXPIRE, authData.ExpiresIn.ToString());
+            SDKManagerSaving.Save(new SaveData {
+                AccessToken = authData.AccessToken, 
+                RefreshToken = authData.RefreshToken,
+                ExpiresIn = authData.ExpiresIn
+            });
         }
-        private static AuthData loadAuthData()
-        {
-            AuthData authData = new();
 
-            if (EditorPrefs.HasKey(KEY_ACCESS_TOKEN) && EditorPrefs.HasKey(KEY_REFRESH_TOKEN) && EditorPrefs.HasKey(KEY_TOKEN_EXPIRE))
+        private static AuthData LoadAuthData()
+        {
+            if (SDKManagerSaving.HasSave())
             {
-                authData.AccessToken = EditorPrefs.GetString(KEY_ACCESS_TOKEN);
-                authData.RefreshToken = EditorPrefs.GetString(KEY_REFRESH_TOKEN);
-                if (long.TryParse(EditorPrefs.GetString(KEY_TOKEN_EXPIRE), out long tokenExpiresIn))
+                SaveData loadedSaveData = SDKManagerSaving.Load();
+                return new AuthData
                 {
-                    authData.ExpiresIn = tokenExpiresIn;
-                }
-
-                return authData;
+                    AccessToken = loadedSaveData.AccessToken,
+                    RefreshToken = loadedSaveData.RefreshToken,
+                    ExpiresIn = loadedSaveData.ExpiresIn
+                };
             }
 
             return InvalidAuthData;
         }
-        private static AuthData createAuthDataFromLoginResponse(JObject response)
+        private static AuthData CreateAuthDataFromLoginResponse(JObject response)
         {
             AuthData newAuthData = new();
 

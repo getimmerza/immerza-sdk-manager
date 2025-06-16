@@ -32,7 +32,7 @@ namespace ImmerzaSDK.Manager.Editor
         None = 0,
         Timestamp = 1,
         ChannelType = 2,
-        JustRawMessag = 4
+        RawMessage = 4
     }
 
     public interface ILogChannel
@@ -88,7 +88,7 @@ namespace ImmerzaSDK.Manager.Editor
 
                 string formattedMessage = string.Empty; 
 
-                if (!logChannel.Flags.HasFlag(LogChannelFlags.JustRawMessag))
+                if (!logChannel.Flags.HasFlag(LogChannelFlags.RawMessage))
                 {
                     if (logChannel.Flags.HasFlag(LogChannelFlags.Timestamp))
                     {

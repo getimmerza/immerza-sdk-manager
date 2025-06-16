@@ -16,7 +16,7 @@ namespace ImmerzaSDK.Manager.Editor
 
         private void initializeAuthPage()
         {
-            clearVisualRoot();
+            ClearVisualRoot();
 
             _treeAssetAuthPage.CloneTree(rootVisualElement);
             VisualElement authRoot = rootVisualElement.Q<VisualElement>("AuthPage");
@@ -76,7 +76,7 @@ namespace ImmerzaSDK.Manager.Editor
                 return;
             }
 
-            await initializeMainPage();
+            await InitializeMainPage();
         }
     }
 }

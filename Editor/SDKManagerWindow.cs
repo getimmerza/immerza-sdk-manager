@@ -31,22 +31,22 @@ namespace ImmerzaSDK.Manager.Editor
             GetWindow<SDKManagerWindow>("Immerza SDK Manager");
         }
 
-        private void clearVisualRoot()
+        private void ClearVisualRoot()
         {
             rootVisualElement.Clear();
         }
 
-        private async Awaitable initializeMainPage()
+        private async Awaitable InitializeMainPage()
         {
-            clearVisualRoot();
+            ClearVisualRoot();
 
             _treeAssetMainPage.CloneTree(rootVisualElement);
             TabView mainPageRoot = rootVisualElement.Q<TabView>("MainPage");
 
             _mainPageBtnOpenLog = rootVisualElement.Q<Button>("OpenLogButton");
-            _mainPageBtnOpenLog.clicked += _mainPageBtnOpenLog_onClick;
+            _mainPageBtnOpenLog.clicked += MainPageBtnOpenLog_onClick;
             _mainPageBtnPreflightChecks = rootVisualElement.Q<Button>("PreflightChecksButton");
-            _mainPageBtnPreflightChecks.clicked += _mainPageBtnPreflightChecks_clicked;
+            _mainPageBtnPreflightChecks.clicked += MainPageBtnPreflightChecks_clicked;
 
             List <Task> initializationTasks = new()
             {
@@ -58,14 +58,14 @@ namespace ImmerzaSDK.Manager.Editor
             await Task.WhenAll(initializationTasks);
         }
 
-        private void _mainPageBtnPreflightChecks_clicked()
+        private void MainPageBtnPreflightChecks_clicked()
         {
 #if IMMERZA_SDK_INSTALLED
             PreflightCheckManager.RunChecks();
 #endif
         }
 
-        private void _mainPageBtnOpenLog_onClick()
+        private void MainPageBtnOpenLog_onClick()
         {
             Process.Start("explorer.exe", Path.Combine(Path.GetFullPath(Application.persistentDataPath), "EditorLog.log"));
         }
@@ -75,7 +75,7 @@ namespace ImmerzaSDK.Manager.Editor
             _authData = await Auth.Setup();
             if (_authData != null)
             {
-                await initializeMainPage();
+                await InitializeMainPage();
             }
             else
             {
