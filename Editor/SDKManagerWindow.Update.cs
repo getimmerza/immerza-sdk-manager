@@ -12,6 +12,7 @@ using System.IO.Compression;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Drawing.Printing;
+using System.Globalization;
 
 namespace ImmerzaSDK.Manager.Editor
 {
