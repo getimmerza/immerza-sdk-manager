@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Linq;
@@ -78,12 +79,23 @@ namespace ImmerzaSDK.Manager.Editor
             return (newAuthData, "Sign in successful!");
         }
 
+        internal class RefreshTokenData
+        {
+            [JsonProperty("refresh_token")]
+            public string RefreshToken;
+
+            public RefreshTokenData(string refreshToken)
+            {
+                RefreshToken = refreshToken;
+            }
+        }
+
         internal async static Awaitable<bool> CheckAuthData(AuthData authData)
         {
             if (authData.IsExpired)
             {
                 Debug.Log(authData.RefreshToken);
-                using UnityWebRequest req = UnityWebRequest.Post(Constants.API_ROUTE_REFRESH_TOKEN, $"{{\"refresh_token\": \"{authData.RefreshToken}\"}}", "application/json");
+                using UnityWebRequest req = UnityWebRequest.Post(Constants.API_ROUTE_REFRESH_TOKEN, JsonConvert.SerializeObject(new RefreshTokenData(authData.RefreshToken)), "application/json");
                 req.SetRequestHeader("Content-Type", "application/json");
                 await req.SendWebRequest();
 
