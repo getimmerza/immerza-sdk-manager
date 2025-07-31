@@ -1,8 +1,10 @@
 using ImmerzaSDK.Lua;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using XLua;
@@ -11,9 +13,15 @@ namespace ImmerzaSDK.Manager.Editor
 {
     public static class CheckUtil
     {
+        private static readonly Regex NamespaceRegex = new(@"^(CS\.[\w\.]+)\s*=\s*\1\s+or\s+\{\}", RegexOptions.Compiled);
+        private static readonly Regex ClassRegex = new(@"CS\.[\w\.]+", RegexOptions.Compiled);
+        private static readonly Regex FunctionRegex = new(@"function\s+(CS\.[\w\.]+)", RegexOptions.Compiled);
+        private static readonly Regex ShorthandFunctionRegex = new(@"function\s+[\w_]+[:\.]([\w_]+)", RegexOptions.Compiled);
+        private static readonly Regex FieldRegex = new(@"---@field\s+([\w_]+)", RegexOptions.Compiled);
+
         public static List<LuaAsset> GetLuaAssets()
         {
-            string[] scriptGUIDs = AssetDatabase.FindAssets("t: LuaAsset");
+            string[] scriptGUIDs = AssetDatabase.FindAssets("t: LuaAsset", new[] { "Assets/Scripts" });
 
             List<LuaAsset> scripts = new();
 
@@ -27,45 +35,74 @@ namespace ImmerzaSDK.Manager.Editor
 
         public static HashSet<string> GetAllLuaBindingNames()
         {
-            Assembly[] allAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+            HashSet<string> allBindings = new();
+            string[] stubFiles = Directory.GetFiles("Assets/Immerza/LuaAutocompletion", "*.lua", SearchOption.AllDirectories);
 
-            HashSet<string> allLuaBindings = new();
+            string currentClass = null;
 
-            List<Type> luaBindingClasses = new() {
-                typeof(GenConfig),
-                typeof(XRGenConfig)
-            };
-
-            foreach (var assembly in allAssemblies)
+            foreach (string file in stubFiles)
             {
-                Type[] types = assembly.GetTypes();
+                string[] lines = File.ReadAllLines(file);
 
-                foreach (var type in types)
+                foreach (string line in lines)
                 {
-                    if (type.GetCustomAttributes(typeof(LuaCallCSharpAttribute), false).Any())
+                    string trimmed = line.Trim();
+
+                    // match namespace
+                    Match orAssignMatch = NamespaceRegex.Match(trimmed);
+                    if (orAssignMatch.Success)
                     {
-                        allLuaBindings.Add($"CS.{type.FullName}");
+                        string fullName = orAssignMatch.Groups[1].Value;
+                        allBindings.Add(fullName);
+                        currentClass = fullName;
+                        continue;
                     }
-                }
-            }
 
-            foreach (Type genConfig in luaBindingClasses)
-            {
-                FieldInfo field = genConfig.GetField("LuaCallCSharp", BindingFlags.Public | BindingFlags.Static);
-                if (field != null)
-                {
-                    object value = field.GetValue(null);
-                    if (value is List<Type> typeList)
+                    // match class
+                    if (trimmed.StartsWith("---@class CS."))
                     {
-                        foreach (Type type in typeList)
+                        Match match = ClassRegex.Match(trimmed);
+                        if (match.Success)
                         {
-                            allLuaBindings.Add($"CS.{type.FullName}");
+                            currentClass = match.Value;
+                            allBindings.Add(currentClass);
+                            continue;
+                        }
+                    }
+
+                    // match function
+                    if (currentClass != null && trimmed.StartsWith("function"))
+                    {
+                        Match funcMatch = FunctionRegex.Match(trimmed);
+                        if (funcMatch.Success)
+                        {
+                            allBindings.Add(funcMatch.Groups[1].Value);
+                        }
+                        else
+                        {
+                            Match shorthandMatch = ShorthandFunctionRegex.Match(trimmed);
+                            if (shorthandMatch.Success)
+                            {
+                                string method = shorthandMatch.Groups[1].Value;
+                                allBindings.Add($"{currentClass}.{method}");
+                            }
+                        }
+                    }
+
+                    // match field
+                    if (currentClass != null && trimmed.StartsWith("---@field"))
+                    {
+                        Match fieldMatch = FieldRegex.Match(trimmed);
+                        if (fieldMatch.Success)
+                        {
+                            string field = fieldMatch.Groups[1].Value;
+                            allBindings.Add($"{currentClass}.{field}");
                         }
                     }
                 }
             }
 
-            return allLuaBindings;
+            return allBindings;
         }
     }
 }
