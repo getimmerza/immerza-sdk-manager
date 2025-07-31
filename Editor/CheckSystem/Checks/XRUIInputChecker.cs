@@ -23,5 +23,13 @@ public class XRUIInputChecker : ICheckable
         {
             context.AddError("Only one NearFarInteractor found! Scene needs atleast one for each hand.");
         }
+
+        foreach (NearFarInteractor comp in found)
+        {
+            if (!comp.gameObject.activeInHierarchy)
+            {
+                context.AddWarning($"NearFarInteractor on GameObject '{comp.gameObject.name}' is inactive, be sure to enable it at runtime or before exporting.", comp);
+            }
+        }
     }
 }
