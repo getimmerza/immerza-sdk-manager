@@ -284,20 +284,28 @@ namespace ImmerzaSDK.Manager.Editor
 
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
-                string entryPath = entry.FullName.Replace('/', '\\');
-                string fullPath = Path.Combine(extractPath, entryPath.Substring(entryPath.IndexOf('\\') + topLevelFolders == 1 ? 1 : 0));
+                string[] parts = entry.FullName.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0) continue;
+                
+                string relativePath = string.Join(Path.DirectorySeparatorChar.ToString(), topLevelFolders == 1 ? parts.Skip(1) : parts);
+                string fullPath = Path.Combine(extractPath, relativePath);
 
-                if (fullPath.EndsWith("\\"))
+                if (string.IsNullOrEmpty(relativePath))
+                    continue;
+
+                if (entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\"))
                 {
                     Directory.CreateDirectory(fullPath);
                 }
                 else
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+                    Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
 
-                    string blackListItem = installBlackList.FirstOrDefault(item => fullPath.EndsWith(item));
+                    string blackListItem = installBlackList.FirstOrDefault(item => fullPath.EndsWith(item, StringComparison.OrdinalIgnoreCase));
                     if (string.IsNullOrEmpty(blackListItem) || !File.Exists(fullPath))
+                    {
                         entry.ExtractToFile(fullPath, overwrite: true);
+                    }
                 }
             }
         }

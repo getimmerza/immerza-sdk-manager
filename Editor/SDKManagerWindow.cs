@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.IO;
 using System;
+using Debug = UnityEngine.Debug;
 
 namespace ImmerzaSDK.Manager.Editor
 {
@@ -67,7 +68,24 @@ namespace ImmerzaSDK.Manager.Editor
 
         private void MainPageBtnOpenLog_onClick()
         {
-            Process.Start("explorer.exe", Path.Combine(Path.GetFullPath(Application.persistentDataPath), "EditorLog.log"));
+            string logPath = Path.Combine(Path.GetFullPath(Application.persistentDataPath), "EditorLog.log");
+
+            if (Application.platform == RuntimePlatform.WindowsEditor)
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe", $"\"{logPath}\"") { UseShellExecute = true });
+            }
+            else if (Application.platform == RuntimePlatform.OSXEditor)
+            {
+                Process.Start("open", $"\"{logPath}\"");
+            }
+            else if (Application.platform == RuntimePlatform.LinuxEditor)
+            {
+                Process.Start("xdg-open", $"\"{logPath}\"");
+            }
+            else
+            {
+                Debug.LogWarning("Opening logs is not supported on this platform.");
+            }
         }
 
         public async void CreateGUI()

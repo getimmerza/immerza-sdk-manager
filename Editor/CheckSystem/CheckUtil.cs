@@ -36,7 +36,14 @@ namespace ImmerzaSDK.Manager.Editor
         public static HashSet<string> GetAllLuaBindingNames()
         {
             HashSet<string> allBindings = new();
-            string[] stubFiles = Directory.GetFiles("Assets/Immerza/LuaAutocompletion", "*.lua", SearchOption.AllDirectories);
+            string stubPath = Path.Combine("Assets", "Immerza", "LuaAutocompletion");
+
+            if (!Directory.Exists(stubPath))
+            {
+                return allBindings;
+            }
+            
+            string[] stubFiles = Directory.GetFiles(stubPath, "*.lua", SearchOption.AllDirectories);
 
             string currentClass = null;
 
