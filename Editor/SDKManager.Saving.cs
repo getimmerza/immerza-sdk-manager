@@ -11,6 +11,9 @@ namespace ImmerzaSDK.Manager.Editor
         public long ExpiresIn;
     }
 
+    /// <summary>
+    /// Very crude save system for settings used by the SDK Manager.
+    /// </summary>
     public static class SDKManagerSaving
     {
         private static readonly string SAVE_DATA_PATH = Path.Combine(Application.persistentDataPath, "ImmerzaSDKManager", "save-data.json");

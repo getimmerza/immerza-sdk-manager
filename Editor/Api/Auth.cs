@@ -10,6 +10,8 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
 
+// Authentication logic via Ovok JWT.
+
 namespace ImmerzaSDK.Manager.Editor
 {
     internal class User
@@ -30,9 +32,9 @@ namespace ImmerzaSDK.Manager.Editor
 
     internal static class Auth
     {
-        private const string KEY_ACCESS_TOKEN  = "ImmerzaAccessToken";
+        private const string KEY_ACCESS_TOKEN = "ImmerzaAccessToken";
         private const string KEY_REFRESH_TOKEN = "ImmerzaRefreshToken";
-        private const string KEY_TOKEN_EXPIRE  = "ImmerzaTokenExpiration";
+        private const string KEY_TOKEN_EXPIRE = "ImmerzaTokenExpiration";
 
         internal static readonly AuthData InvalidAuthData = new();
 
@@ -165,8 +167,9 @@ namespace ImmerzaSDK.Manager.Editor
 
         private static void StoreAuthData(AuthData authData)
         {
-            SDKManagerSaving.Save(new SaveData {
-                AccessToken = authData.AccessToken, 
+            SDKManagerSaving.Save(new SaveData
+            {
+                AccessToken = authData.AccessToken,
                 RefreshToken = authData.RefreshToken,
                 ExpiresIn = authData.ExpiresIn
             });
