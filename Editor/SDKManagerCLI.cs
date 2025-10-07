@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace ImmerzaSDK.Manager.Editor
 {
+    /// <summary>
+    /// Used by scene deploy pipeline.
+    /// </summary>
     public static class SDKManagerCLI
     {
         public static void ExportScene()
@@ -17,7 +20,7 @@ namespace ImmerzaSDK.Manager.Editor
                 {
                     outputPath = args[i + 1];
                 }
-                else if (args[i] == "-sceneName" && i+1 < args.Length)
+                else if (args[i] == "-sceneName" && i + 1 < args.Length)
                 {
                     sceneName = args[i + 1];
                 }
@@ -26,11 +29,11 @@ namespace ImmerzaSDK.Manager.Editor
             if (string.IsNullOrEmpty(outputPath) || string.IsNullOrEmpty(sceneName))
             {
                 Debug.LogError("Scene not found or export path not set!");
-                return; 
+                return;
             }
 
             SceneAsset sceneAsset = null;
-            
+
             string[] guids = AssetDatabase.FindAssets("t:Scene " + sceneName);
             foreach (string guid in guids)
             {
@@ -48,21 +51,21 @@ namespace ImmerzaSDK.Manager.Editor
                 Debug.LogError("Scene not found!");
                 return;
             }
-            
+
             ExportSettings exportSettings = new ExportSettings
             {
                 ExportFolder = outputPath,
                 SceneToExport = sceneAsset
             };
-            
+
             SDKAPIBridge.SceneBuilder.PrepareForExport(exportSettings);
             SDKAPIBridge.SceneBuilder.ExportScene(exportSettings);
         }
-        
-        
+
+
         private static void UpdateSDK()
         {
-            
+
         }
     }
 }

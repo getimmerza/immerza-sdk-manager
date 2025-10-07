@@ -20,6 +20,7 @@ namespace ImmerzaSDK.Manager.Editor
     {
         private static readonly ReleaseInfo InvalidRelease = new ReleaseInfo(string.Empty, "None", string.Empty, 0);
 
+        // Unity can't reload assemblies once they are loaded (Unity, why?), so we can't update them currently.
         private static readonly string[] InstallBlackList = new string[] { "Plugins\\x86_64\\xlua.dll", "Plugins\\x86\\xlua.dll" };
 
         #region UI Elements
