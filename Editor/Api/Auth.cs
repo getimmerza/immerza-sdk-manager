@@ -97,6 +97,7 @@ namespace ImmerzaSDK.Manager.Editor
             if (authData.IsExpired)
             {
                 Debug.Log(authData.RefreshToken);
+                Debug.Log(JsonConvert.SerializeObject(new RefreshTokenData(authData.RefreshToken)));
                 using UnityWebRequest req = UnityWebRequest.Post(Constants.API_ROUTE_REFRESH_TOKEN, JsonConvert.SerializeObject(new RefreshTokenData(authData.RefreshToken)), "application/json");
                 req.SetRequestHeader("Content-Type", "application/json");
                 await req.SendWebRequest();
@@ -108,7 +109,11 @@ namespace ImmerzaSDK.Manager.Editor
                 }
 
                 JObject resObj = JObject.Parse(req.downloadHandler.text);
-                authData = CreateAuthDataFromLoginResponse(resObj);
+                AuthData refreshed = CreateAuthDataFromLoginResponse(resObj);
+                authData.AccessToken = refreshed.AccessToken;
+                authData.RefreshToken = refreshed.RefreshToken;
+                authData.ExpiresIn = refreshed.ExpiresIn;
+
                 StoreAuthData(authData);
             }
 
